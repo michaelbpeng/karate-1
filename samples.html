@@ -1273,3 +1273,17 @@ spring.batch.job.enabled=false
 
 This configuration should allow you to handle `TVOrder` and `ComputerOrder` types with separate jobs, but share common logic and configuration wherever possible to maximize code reuse and maintainability.
 
+ public Step tvOrderStep() {
+        return stepBuilderFactory.get("tvOrderStep")
+                .<TVOrder, TVOrder>chunk(1000)
+                .reader(tvOrderReader)
+                .writer(new OrderItemWriter<>(
+                        "tvOrders.csv",
+                        tvOrderLineAggregator,
+                        "Header for TV Orders",
+                        "Trailer for TV Orders"
+                ))
+                .listener(tvOrderReadListener)
+                .taskExecutor(taskExecutor())
+                .build();
+    }
