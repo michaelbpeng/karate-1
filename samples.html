@@ -1,1292 +1,1275 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
-<html>
-<head>
-  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-  <meta http-equiv="Content-Style-Type" content="text/css">
-  <title></title>
-  <meta name="Generator" content="Cocoa HTML Writer">
-  <meta name="CocoaVersion" content="2299.4">
-  <style type="text/css">
-    p.p1 {margin: 0.0px 0.0px 0.0px 0.0px; font: 12.0px Helvetica; min-height: 14.0px}
-    p.p2 {margin: 0.0px 0.0px 0.0px 0.0px; font: 13.0px 'Helvetica Neue'}
-    p.p3 {margin: 0.0px 0.0px 0.0px 0.0px; font: 13.0px 'Helvetica Neue'; min-height: 15.0px}
-  </style>
-</head>
-<body>
-<p class="p1"><br></p>
-<p class="p1"><br></p>
-<p class="p1"><br></p>
-<p class="p2">the complete Spring Boot project structured to handle batch processing with different job types (`Order`, `TVOrder`, `ComputerOrder`), using `JdbcCursorItemReader` with lambda functions for row mapping, and including specific `ItemWriter` implementations for each order type.</p>
-<p class="p3"><br></p>
-<p class="p2">### Project Structure</p>
-<p class="p3"><br></p>
-<p class="p2">```</p>
-<p class="p2">batch-processing/</p>
-<p class="p2">│</p>
-<p class="p2">├── src/</p>
-<p class="p2">│ <span class="Apple-converted-space">  </span>├── main/</p>
-<p class="p2">│ <span class="Apple-converted-space">  </span>│ <span class="Apple-converted-space">  </span>├── java/</p>
-<p class="p2">│ <span class="Apple-converted-space">  </span>│ <span class="Apple-converted-space">  </span>│ <span class="Apple-converted-space">  </span>├── com/</p>
-<p class="p2">│ <span class="Apple-converted-space">  </span>│ <span class="Apple-converted-space">  </span>│ <span class="Apple-converted-space">  </span>│ <span class="Apple-converted-space">  </span>└── example/</p>
-<p class="p2">│ <span class="Apple-converted-space">  </span>│ <span class="Apple-converted-space">  </span>│ <span class="Apple-converted-space">  </span>│ <span class="Apple-converted-space">      </span>└── batch/</p>
-<p class="p2">│ <span class="Apple-converted-space">  </span>│ <span class="Apple-converted-space">  </span>│ <span class="Apple-converted-space">  </span>│ <span class="Apple-converted-space">          </span>├── BatchApplication.java</p>
-<p class="p2">│ <span class="Apple-converted-space">  </span>│ <span class="Apple-converted-space">  </span>│ <span class="Apple-converted-space">  </span>│ <span class="Apple-converted-space">          </span>├── config/</p>
-<p class="p2">│ <span class="Apple-converted-space">  </span>│ <span class="Apple-converted-space">  </span>│ <span class="Apple-converted-space">  </span>│ <span class="Apple-converted-space">          </span>│ <span class="Apple-converted-space">  </span>├── BatchConfig.java</p>
-<p class="p2">│ <span class="Apple-converted-space">  </span>│ <span class="Apple-converted-space">  </span>│ <span class="Apple-converted-space">  </span>│ <span class="Apple-converted-space">          </span>│ <span class="Apple-converted-space">  </span>├── ZipFileTasklet.java</p>
-<p class="p2">│ <span class="Apple-converted-space">  </span>│ <span class="Apple-converted-space">  </span>│ <span class="Apple-converted-space">  </span>│ <span class="Apple-converted-space">          </span>│ <span class="Apple-converted-space">  </span>└── JobCompletionListener.java</p>
-<p class="p2">│ <span class="Apple-converted-space">  </span>│ <span class="Apple-converted-space">  </span>│ <span class="Apple-converted-space">  </span>│ <span class="Apple-converted-space">          </span>├── entity/</p>
-<p class="p2">│ <span class="Apple-converted-space">  </span>│ <span class="Apple-converted-space">  </span>│ <span class="Apple-converted-space">  </span>│ <span class="Apple-converted-space">          </span>│ <span class="Apple-converted-space">  </span>├── Order.java</p>
-<p class="p2">│ <span class="Apple-converted-space">  </span>│ <span class="Apple-converted-space">  </span>│ <span class="Apple-converted-space">  </span>│ <span class="Apple-converted-space">          </span>│ <span class="Apple-converted-space">  </span>├── TVOrder.java</p>
-<p class="p2">│ <span class="Apple-converted-space">  </span>│ <span class="Apple-converted-space">  </span>│ <span class="Apple-converted-space">  </span>│ <span class="Apple-converted-space">          </span>│ <span class="Apple-converted-space">  </span>└── ComputerOrder.java</p>
-<p class="p2">│ <span class="Apple-converted-space">  </span>│ <span class="Apple-converted-space">  </span>│ <span class="Apple-converted-space">  </span>│ <span class="Apple-converted-space">          </span>├── processor/</p>
-<p class="p2">│ <span class="Apple-converted-space">  </span>│ <span class="Apple-converted-space">  </span>│ <span class="Apple-converted-space">  </span>│ <span class="Apple-converted-space">          </span>│ <span class="Apple-converted-space">  </span>└── OrderProcessor.java</p>
-<p class="p2">│ <span class="Apple-converted-space">  </span>│ <span class="Apple-converted-space">  </span>│ <span class="Apple-converted-space">  </span>│ <span class="Apple-converted-space">          </span>├── reader/</p>
-<p class="p2">│ <span class="Apple-converted-space">  </span>│ <span class="Apple-converted-space">  </span>│ <span class="Apple-converted-space">  </span>│ <span class="Apple-converted-space">          </span>│ <span class="Apple-converted-space">  </span>├── OrderReader.java</p>
-<p class="p2">│ <span class="Apple-converted-space">  </span>│ <span class="Apple-converted-space">  </span>│ <span class="Apple-converted-space">  </span>│ <span class="Apple-converted-space">          </span>│ <span class="Apple-converted-space">  </span>├── TVOrderReader.java</p>
-<p class="p2">│ <span class="Apple-converted-space">  </span>│ <span class="Apple-converted-space">  </span>│ <span class="Apple-converted-space">  </span>│ <span class="Apple-converted-space">          </span>│ <span class="Apple-converted-space">  </span>└── ComputerOrderReader.java</p>
-<p class="p2">│ <span class="Apple-converted-space">  </span>│ <span class="Apple-converted-space">  </span>│ <span class="Apple-converted-space">  </span>│ <span class="Apple-converted-space">          </span>└── writer/</p>
-<p class="p2">│ <span class="Apple-converted-space">  </span>│ <span class="Apple-converted-space">  </span>│ <span class="Apple-converted-space">  </span>│ <span class="Apple-converted-space">              </span>├── OrderItemWriter.java</p>
-<p class="p2">│ <span class="Apple-converted-space">  </span>│ <span class="Apple-converted-space">  </span>│ <span class="Apple-converted-space">  </span>│ <span class="Apple-converted-space">              </span>├── TVOrderItemWriter.java</p>
-<p class="p2">│ <span class="Apple-converted-space">  </span>│ <span class="Apple-converted-space">  </span>│ <span class="Apple-converted-space">  </span>│ <span class="Apple-converted-space">              </span>└── ComputerOrderItemWriter.java</p>
-<p class="p2">│ <span class="Apple-converted-space">  </span>│ <span class="Apple-converted-space">  </span>└── resources/</p>
-<p class="p2">│ <span class="Apple-converted-space">  </span>│ <span class="Apple-converted-space">      </span>└── application.properties</p>
-<p class="p2">└── pom.xml</p>
-<p class="p2">```</p>
-<p class="p3"><br></p>
-<p class="p2">### 1. **`BatchApplication.java`**</p>
-<p class="p3"><br></p>
-<p class="p2">```java</p>
-<p class="p2">package com.example.batch;</p>
-<p class="p3"><br></p>
-<p class="p2">import org.springframework.boot.SpringApplication;</p>
-<p class="p2">import org.springframework.boot.autoconfigure.SpringBootApplication;</p>
-<p class="p3"><br></p>
-<p class="p2">@SpringBootApplication</p>
-<p class="p2">public class BatchApplication {</p>
-<p class="p2"><span class="Apple-converted-space">    </span>public static void main(String[] args) {</p>
-<p class="p2"><span class="Apple-converted-space">        </span>SpringApplication.run(BatchApplication.class, args);</p>
-<p class="p2"><span class="Apple-converted-space">    </span>}</p>
-<p class="p2">}</p>
-<p class="p2">```</p>
-<p class="p3"><br></p>
-<p class="p2">### 2. **`BatchConfig.java`**</p>
-<p class="p3"><br></p>
-<p class="p2">```java</p>
-<p class="p2">package com.example.batch.config;</p>
-<p class="p3"><br></p>
-<p class="p2">import com.example.batch.entity.ComputerOrder;</p>
-<p class="p2">import com.example.batch.entity.Order;</p>
-<p class="p2">import com.example.batch.entity.TVOrder;</p>
-<p class="p2">import com.example.batch.processor.OrderProcessor;</p>
-<p class="p2">import com.example.batch.writer.ComputerOrderItemWriter;</p>
-<p class="p2">import com.example.batch.writer.OrderItemWriter;</p>
-<p class="p2">import com.example.batch.writer.TVOrderItemWriter;</p>
-<p class="p2">import com.example.batch.reader.ComputerOrderReader;</p>
-<p class="p2">import com.example.batch.reader.OrderReader;</p>
-<p class="p2">import com.example.batch.reader.TVOrderReader;</p>
-<p class="p2">import org.springframework.batch.core.Job;</p>
-<p class="p2">import org.springframework.batch.core.Step;</p>
-<p class="p2">import org.springframework.batch.core.configuration.annotation.EnableBatchProcessing;</p>
-<p class="p2">import org.springframework.batch.core.configuration.annotation.JobBuilderFactory;</p>
-<p class="p2">import org.springframework.batch.core.configuration.annotation.StepBuilderFactory;</p>
-<p class="p2">import org.springframework.batch.core.listener.JobExecutionListenerSupport;</p>
-<p class="p2">import org.springframework.batch.core.step.tasklet.Tasklet;</p>
-<p class="p2">import org.springframework.batch.core.step.tasklet.TaskletStep;</p>
-<p class="p2">import org.springframework.batch.item.ItemProcessor;</p>
-<p class="p2">import org.springframework.batch.item.ItemReader;</p>
-<p class="p2">import org.springframework.batch.item.ItemWriter;</p>
-<p class="p2">import org.springframework.beans.factory.annotation.Autowired;</p>
-<p class="p2">import org.springframework.beans.factory.annotation.Value;</p>
-<p class="p2">import org.springframework.context.annotation.Bean;</p>
-<p class="p2">import org.springframework.context.annotation.Configuration;</p>
-<p class="p2">import org.springframework.core.io.FileSystemResource;</p>
-<p class="p3"><br></p>
-<p class="p2">import javax.sql.DataSource;</p>
-<p class="p3"><br></p>
-<p class="p2">@Configuration</p>
-<p class="p2">@EnableBatchProcessing</p>
-<p class="p2">public class BatchConfig {</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>@Autowired</p>
-<p class="p2"><span class="Apple-converted-space">    </span>private JobBuilderFactory jobBuilderFactory;</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>@Autowired</p>
-<p class="p2"><span class="Apple-converted-space">    </span>private StepBuilderFactory stepBuilderFactory;</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>@Autowired</p>
-<p class="p2"><span class="Apple-converted-space">    </span>private DataSource dataSource;</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>@Autowired</p>
-<p class="p2"><span class="Apple-converted-space">    </span>private OrderItemWriter orderItemWriter;</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>@Autowired</p>
-<p class="p2"><span class="Apple-converted-space">    </span>private TVOrderItemWriter tvOrderItemWriter;</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>@Autowired</p>
-<p class="p2"><span class="Apple-converted-space">    </span>private ComputerOrderItemWriter computerOrderItemWriter;</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>@Autowired</p>
-<p class="p2"><span class="Apple-converted-space">    </span>private JobCompletionListener jobCompletionListener;</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>@Autowired</p>
-<p class="p2"><span class="Apple-converted-space">    </span>private ZipFileTasklet zipFileTasklet;</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>@Bean</p>
-<p class="p2"><span class="Apple-converted-space">    </span>public Job orderJob() {</p>
-<p class="p2"><span class="Apple-converted-space">        </span>return jobBuilderFactory.get("orderJob")</p>
-<p class="p2"><span class="Apple-converted-space">                </span>.listener(jobCompletionListener)</p>
-<p class="p2"><span class="Apple-converted-space">                </span>.start(processOrderStep())</p>
-<p class="p2"><span class="Apple-converted-space">                </span>.next(zipStep())</p>
-<p class="p2"><span class="Apple-converted-space">                </span>.build();</p>
-<p class="p2"><span class="Apple-converted-space">    </span>}</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>@Bean</p>
-<p class="p2"><span class="Apple-converted-space">    </span>public Job tvOrderJob() {</p>
-<p class="p2"><span class="Apple-converted-space">        </span>return jobBuilderFactory.get("tvOrderJob")</p>
-<p class="p2"><span class="Apple-converted-space">                </span>.listener(jobCompletionListener)</p>
-<p class="p2"><span class="Apple-converted-space">                </span>.start(processTVOrderStep())</p>
-<p class="p2"><span class="Apple-converted-space">                </span>.next(zipStep())</p>
-<p class="p2"><span class="Apple-converted-space">                </span>.build();</p>
-<p class="p2"><span class="Apple-converted-space">    </span>}</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>@Bean</p>
-<p class="p2"><span class="Apple-converted-space">    </span>public Job computerOrderJob() {</p>
-<p class="p2"><span class="Apple-converted-space">        </span>return jobBuilderFactory.get("computerOrderJob")</p>
-<p class="p2"><span class="Apple-converted-space">                </span>.listener(jobCompletionListener)</p>
-<p class="p2"><span class="Apple-converted-space">                </span>.start(processComputerOrderStep())</p>
-<p class="p2"><span class="Apple-converted-space">                </span>.next(zipStep())</p>
-<p class="p2"><span class="Apple-converted-space">                </span>.build();</p>
-<p class="p2"><span class="Apple-converted-space">    </span>}</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>@Bean</p>
-<p class="p2"><span class="Apple-converted-space">    </span>public Step processOrderStep() {</p>
-<p class="p2"><span class="Apple-converted-space">        </span>return stepBuilderFactory.get("processOrderStep")</p>
-<p class="p2"><span class="Apple-converted-space">                </span>.&lt;Order, Order&gt;chunk(10)</p>
-<p class="p2"><span class="Apple-converted-space">                </span>.reader(orderReader())</p>
-<p class="p2"><span class="Apple-converted-space">                </span>.processor(orderProcessor())</p>
-<p class="p2"><span class="Apple-converted-space">                </span>.writer(orderItemWriter)</p>
-<p class="p2"><span class="Apple-converted-space">                </span>.build();</p>
-<p class="p2"><span class="Apple-converted-space">    </span>}</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>@Bean</p>
-<p class="p2"><span class="Apple-converted-space">    </span>public Step processTVOrderStep() {</p>
-<p class="p2"><span class="Apple-converted-space">        </span>return stepBuilderFactory.get("processTVOrderStep")</p>
-<p class="p2"><span class="Apple-converted-space">                </span>.&lt;TVOrder, TVOrder&gt;chunk(10)</p>
-<p class="p2"><span class="Apple-converted-space">                </span>.reader(tvOrderReader())</p>
-<p class="p2"><span class="Apple-converted-space">                </span>.processor(orderProcessor())</p>
-<p class="p2"><span class="Apple-converted-space">                </span>.writer(tvOrderItemWriter)</p>
-<p class="p2"><span class="Apple-converted-space">                </span>.build();</p>
-<p class="p2"><span class="Apple-converted-space">    </span>}</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>@Bean</p>
-<p class="p2"><span class="Apple-converted-space">    </span>public Step processComputerOrderStep() {</p>
-<p class="p2"><span class="Apple-converted-space">        </span>return stepBuilderFactory.get("processComputerOrderStep")</p>
-<p class="p2"><span class="Apple-converted-space">                </span>.&lt;ComputerOrder, ComputerOrder&gt;chunk(10)</p>
-<p class="p2"><span class="Apple-converted-space">                </span>.reader(computerOrderReader())</p>
-<p class="p2"><span class="Apple-converted-space">                </span>.processor(orderProcessor())</p>
-<p class="p2"><span class="Apple-converted-space">                </span>.writer(computerOrderItemWriter)</p>
-<p class="p2"><span class="Apple-converted-space">                </span>.build();</p>
-<p class="p2"><span class="Apple-converted-space">    </span>}</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>@Bean</p>
-<p class="p2"><span class="Apple-converted-space">    </span>public Step zipStep() {</p>
-<p class="p2"><span class="Apple-converted-space">        </span>return stepBuilderFactory.get("zipStep")</p>
-<p class="p2"><span class="Apple-converted-space">                </span>.tasklet(zipFileTasklet)</p>
-<p class="p2"><span class="Apple-converted-space">                </span>.build();</p>
-<p class="p2"><span class="Apple-converted-space">    </span>}</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>@Bean</p>
-<p class="p2"><span class="Apple-converted-space">    </span>public ItemReader&lt;Order&gt; orderReader(@Value("#{jobParameters['orderDate']}") String orderDate) {</p>
-<p class="p2"><span class="Apple-converted-space">        </span>return new OrderReader(dataSource, orderDate);</p>
-<p class="p2"><span class="Apple-converted-space">    </span>}</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>@Bean</p>
-<p class="p2"><span class="Apple-converted-space">    </span>public ItemReader&lt;TVOrder&gt; tvOrderReader(@Value("#{jobParameters['orderDate']}") String orderDate) {</p>
-<p class="p2"><span class="Apple-converted-space">        </span>return new TVOrderReader(dataSource, orderDate);</p>
-<p class="p2"><span class="Apple-converted-space">    </span>}</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>@Bean</p>
-<p class="p2"><span class="Apple-converted-space">    </span>public ItemReader&lt;ComputerOrder&gt; computerOrderReader(@Value("#{jobParameters['orderDate']}") String orderDate) {</p>
-<p class="p2"><span class="Apple-converted-space">        </span>return new ComputerOrderReader(dataSource, orderDate);</p>
-<p class="p2"><span class="Apple-converted-space">    </span>}</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>@Bean</p>
-<p class="p2"><span class="Apple-converted-space">    </span>public ItemProcessor&lt;Order, Order&gt; orderProcessor() {</p>
-<p class="p2"><span class="Apple-converted-space">        </span>return new OrderProcessor();</p>
-<p class="p2"><span class="Apple-converted-space">    </span>}</p>
-<p class="p2">}</p>
-<p class="p2">```</p>
-<p class="p3"><br></p>
-<p class="p2">### 3. **`Order.java`**</p>
-<p class="p3"><br></p>
-<p class="p2">```java</p>
-<p class="p2">package com.example.batch.entity;</p>
-<p class="p3"><br></p>
-<p class="p2">import java.time.LocalDate;</p>
-<p class="p3"><br></p>
-<p class="p2">public class Order {</p>
-<p class="p2"><span class="Apple-converted-space">    </span>private int orderId;</p>
-<p class="p2"><span class="Apple-converted-space">    </span>private String customerName;</p>
-<p class="p2"><span class="Apple-converted-space">    </span>private LocalDate orderDate;</p>
-<p class="p2"><span class="Apple-converted-space">    </span>private double totalAmount;</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>// Getters and Setters</p>
-<p class="p2">}</p>
-<p class="p2">```</p>
-<p class="p3"><br></p>
-<p class="p2">### 4. **`TVOrder.java`**</p>
-<p class="p3"><br></p>
-<p class="p2">```java</p>
-<p class="p2">package com.example.batch.entity;</p>
-<p class="p3"><br></p>
-<p class="p2">public class TVOrder extends Order {</p>
-<p class="p2"><span class="Apple-converted-space">    </span>// Additional fields or methods specific to TVOrder if needed</p>
-<p class="p2">}</p>
-<p class="p2">```</p>
-<p class="p3"><br></p>
-<p class="p2">### 5. **`ComputerOrder.java`**</p>
-<p class="p3"><br></p>
-<p class="p2">```java</p>
-<p class="p2">package com.example.batch.entity;</p>
-<p class="p3"><br></p>
-<p class="p2">public class ComputerOrder extends Order {</p>
-<p class="p2"><span class="Apple-converted-space">    </span>// Additional fields or methods specific to ComputerOrder if needed</p>
-<p class="p2">}</p>
-<p class="p2">```</p>
-<p class="p3"><br></p>
-<p class="p2">### 6. **`OrderProcessor.java`**</p>
-<p class="p3"><br></p>
-<p class="p2">```java</p>
-<p class="p2">package com.example.batch.processor;</p>
-<p class="p3"><br></p>
-<p class="p2">import com.example.batch.entity.Order;</p>
-<p class="p2">import org.springframework.batch.item.ItemProcessor;</p>
-<p class="p2">import org.springframework.stereotype.Component;</p>
-<p class="p3"><br></p>
-<p class="p2">@Component</p>
-<p class="p2">public class OrderProcessor implements ItemProcessor&lt;Order, Order&gt; {</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>@Override</p>
-<p class="p2"><span class="Apple-converted-space">    </span>public Order process(Order item) {</p>
-<p class="p2"><span class="Apple-converted-space">        </span>// Implement your processing logic here</p>
-<p class="p2"><span class="Apple-converted-space">        </span>return item;</p>
-<p class="p2"><span class="Apple-converted-space">    </span>}</p>
-<p class="p2">}</p>
-<p class="p2">```</p>
-<p class="p3"><br></p>
-<p class="p2">### 7. **`OrderReader.java`**</p>
-<p class="p3"><br></p>
-<p class="p2">```java</p>
-<p class="p2">package com.example.batch.reader;</p>
-<p class="p3"><br></p>
-<p class="p2">import com.example.batch.entity.Order;</p>
-<p class="p2">import org.springframework.batch.item.database.JdbcCursorItemReader;</p>
-<p class="p2">import org.springframework.beans.factory.annotation.Value;</p>
-<p class="p2">import org.springframework.stereotype.Component;</p>
-<p class="p3"><br></p>
-<p class="p2">import javax.sql.DataSource;</p>
-<p class="p3"><br></p>
-<p class="p2">@Component</p>
-<p class="p2">public class OrderReader extends JdbcCursorItemReader&lt;Order&gt; {</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>public OrderReader(DataSource dataSource, @Value("#{jobParameters['orderDate']}") String orderDate) {</p>
-<p class="p2"><span class="Apple-converted-space">        </span>setDataSource(dataSource);</p>
-<p class="p2"><span class="Apple-converted-space">        </span>setSql("SELECT order_id, customer_name, order_date, total_amount FROM orders WHERE order_date = ?");</p>
-<p class="p2"><span class="Apple-converted-space">        </span>setPreparedStatementSetter(ps -&gt; ps.setString(1, orderDate));</p>
-<p class="p2"><span class="Apple-converted-space">        </span>setRowMapper((rs, rowNum) -&gt; {</p>
-<p class="p2"><span class="Apple-converted-space">            </span>Order order = new Order();</p>
-<p class="p2"><span class="Apple-converted-space">            </span>order.setOrderId(rs.getInt("order_id"));</p>
-<p class="p2"><span class="Apple-converted-space">            </span>order.setCustomerName(rs.getString("customer_name"));</p>
-<p class="p2"><span class="Apple-converted-space">            </span>order.setOrderDate(rs.getDate("order_date").toLocalDate());</p>
-<p class="p2"><span class="Apple-converted-space">            </span>order.setTotalAmount(rs.getDouble("total_amount"));</p>
-<p class="p2"><span class="Apple-converted-space">            </span>return order;</p>
-<p class="p2"><span class="Apple-converted-space">        </span>});</p>
-<p class="p2"><span class="Apple-converted-space">    </span>}</p>
-<p class="p2">}</p>
-<p class="p2">```</p>
-<p class="p3"><br></p>
-<p class="p2">### 8. **`TVOrderReader.java`**</p>
-<p class="p3"><br></p>
-<p class="p2">```java</p>
-<p class="p2">package com.example.batch.reader;</p>
-<p class="p3"><br></p>
-<p class="p2">import com.example.batch.entity.TVOrder;</p>
-<p class="p2">import org.springframework.batch.item.database.JdbcCursorItemReader;</p>
-<p class="p2">import org.springframework.beans.factory.annotation.Value;</p>
-<p class="p2">import org.springframework.stereotype.Component;</p>
-<p class="p3"><br></p>
-<p class="p2">import javax.sql.DataSource;</p>
-<p class="p3"><br></p>
-<p class="p2">@Component</p>
-<p class="p2">public class TVOrderReader extends JdbcCursorItemReader&lt;TVOrder&gt; {</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>public TVOrderReader(DataSource dataSource, @Value("#{jobParameters['orderDate']}") String orderDate) {</p>
-<p class="p2"><span class="Apple-converted-space">        </span>setDataSource(dataSource);</p>
-<p class="p2"><span class="Apple-converted-space">        </span>setSql("SELECT order_id, customer_name, order_date, total_amount FROM tv_orders WHERE order_date = ?");</p>
-<p class="p2"><span class="Apple-converted-space">        </span>setPreparedStatementSetter(ps -&gt; ps.setString(1, orderDate));</p>
-<p class="p2"><span class="Apple-converted-space">        </span>setRowMapper((</p>
-<p class="p3"><br></p>
-<p class="p2">rs, rowNum) -&gt; {</p>
-<p class="p2"><span class="Apple-converted-space">            </span>TVOrder tvOrder = new TVOrder();</p>
-<p class="p2"><span class="Apple-converted-space">            </span>tvOrder.setOrderId(rs.getInt("order_id"));</p>
-<p class="p2"><span class="Apple-converted-space">            </span>tvOrder.setCustomerName(rs.getString("customer_name"));</p>
-<p class="p2"><span class="Apple-converted-space">            </span>tvOrder.setOrderDate(rs.getDate("order_date").toLocalDate());</p>
-<p class="p2"><span class="Apple-converted-space">            </span>tvOrder.setTotalAmount(rs.getDouble("total_amount"));</p>
-<p class="p2"><span class="Apple-converted-space">            </span>return tvOrder;</p>
-<p class="p2"><span class="Apple-converted-space">        </span>});</p>
-<p class="p2"><span class="Apple-converted-space">    </span>}</p>
-<p class="p2">}</p>
-<p class="p2">```</p>
-<p class="p3"><br></p>
-<p class="p2">### 9. **`ComputerOrderReader.java`**</p>
-<p class="p3"><br></p>
-<p class="p2">```java</p>
-<p class="p2">package com.example.batch.reader;</p>
-<p class="p3"><br></p>
-<p class="p2">import com.example.batch.entity.ComputerOrder;</p>
-<p class="p2">import org.springframework.batch.item.database.JdbcCursorItemReader;</p>
-<p class="p2">import org.springframework.beans.factory.annotation.Value;</p>
-<p class="p2">import org.springframework.stereotype.Component;</p>
-<p class="p3"><br></p>
-<p class="p2">import javax.sql.DataSource;</p>
-<p class="p3"><br></p>
-<p class="p2">@Component</p>
-<p class="p2">public class ComputerOrderReader extends JdbcCursorItemReader&lt;ComputerOrder&gt; {</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>public ComputerOrderReader(DataSource dataSource, @Value("#{jobParameters['orderDate']}") String orderDate) {</p>
-<p class="p2"><span class="Apple-converted-space">        </span>setDataSource(dataSource);</p>
-<p class="p2"><span class="Apple-converted-space">        </span>setSql("SELECT order_id, customer_name, order_date, total_amount FROM computer_orders WHERE order_date = ?");</p>
-<p class="p2"><span class="Apple-converted-space">        </span>setPreparedStatementSetter(ps -&gt; ps.setString(1, orderDate));</p>
-<p class="p2"><span class="Apple-converted-space">        </span>setRowMapper((rs, rowNum) -&gt; {</p>
-<p class="p2"><span class="Apple-converted-space">            </span>ComputerOrder computerOrder = new ComputerOrder();</p>
-<p class="p2"><span class="Apple-converted-space">            </span>computerOrder.setOrderId(rs.getInt("order_id"));</p>
-<p class="p2"><span class="Apple-converted-space">            </span>computerOrder.setCustomerName(rs.getString("customer_name"));</p>
-<p class="p2"><span class="Apple-converted-space">            </span>computerOrder.setOrderDate(rs.getDate("order_date").toLocalDate());</p>
-<p class="p2"><span class="Apple-converted-space">            </span>computerOrder.setTotalAmount(rs.getDouble("total_amount"));</p>
-<p class="p2"><span class="Apple-converted-space">            </span>return computerOrder;</p>
-<p class="p2"><span class="Apple-converted-space">        </span>});</p>
-<p class="p2"><span class="Apple-converted-space">    </span>}</p>
-<p class="p2">}</p>
-<p class="p2">```</p>
-<p class="p3"><br></p>
-<p class="p2">### 10. **`OrderItemWriter.java`**</p>
-<p class="p3"><br></p>
-<p class="p2">```java</p>
-<p class="p2">package com.example.batch.writer;</p>
-<p class="p3"><br></p>
-<p class="p2">import com.example.batch.entity.Order;</p>
-<p class="p2">import org.springframework.batch.item.file.FlatFileItemWriter;</p>
-<p class="p2">import org.springframework.batch.item.file.transform.LineAggregator;</p>
-<p class="p2">import org.springframework.beans.factory.annotation.Value;</p>
-<p class="p2">import org.springframework.core.io.FileSystemResource;</p>
-<p class="p2">import org.springframework.stereotype.Component;</p>
-<p class="p3"><br></p>
-<p class="p2">import java.time.LocalDate;</p>
-<p class="p2">import java.time.format.DateTimeFormatter;</p>
-<p class="p2">import java.util.List;</p>
-<p class="p3"><br></p>
-<p class="p2">@Component</p>
-<p class="p2">public class OrderItemWriter extends FlatFileItemWriter&lt;Order&gt; {</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>private double totalAmount = 0.0;</p>
-<p class="p2"><span class="Apple-converted-space">    </span>private int totalCount = 0;</p>
-<p class="p2"><span class="Apple-converted-space">    </span>private final String outputFileName;</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>public OrderItemWriter(@Value("#{jobParameters['orderDate']}") String orderDate) {</p>
-<p class="p2"><span class="Apple-converted-space">        </span>this.outputFileName = "order-" + LocalDate.now().format(DateTimeFormatter.ISO_DATE) + ".csv";</p>
-<p class="p2"><span class="Apple-converted-space">        </span>setResource(new FileSystemResource(outputFileName));</p>
-<p class="p2"><span class="Apple-converted-space">        </span>setLineAggregator((LineAggregator&lt;Order&gt;) order -&gt; String.format("%d,%s,%s,%.2f",</p>
-<p class="p2"><span class="Apple-converted-space">            </span>order.getOrderId(),</p>
-<p class="p2"><span class="Apple-converted-space">            </span>order.getCustomerName(),</p>
-<p class="p2"><span class="Apple-converted-space">            </span>order.getOrderDate(),</p>
-<p class="p2"><span class="Apple-converted-space">            </span>order.getTotalAmount()));</p>
-<p class="p2"><span class="Apple-converted-space">        </span>setHeaderCallback(writer -&gt; writer.write("Order ID,Customer Name,Order Date,Total Amount"));</p>
-<p class="p2"><span class="Apple-converted-space">        </span>setFooterCallback(writer -&gt; {</p>
-<p class="p2"><span class="Apple-converted-space">            </span>writer.write("Total Records: " + totalCount + "\n");</p>
-<p class="p2"><span class="Apple-converted-space">            </span>writer.write("Total Amount: " + totalAmount + "\n");</p>
-<p class="p2"><span class="Apple-converted-space">        </span>});</p>
-<p class="p2"><span class="Apple-converted-space">    </span>}</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>@Override</p>
-<p class="p2"><span class="Apple-converted-space">    </span>public void write(List&lt;? extends Order&gt; items) {</p>
-<p class="p2"><span class="Apple-converted-space">        </span>for (Order item : items) {</p>
-<p class="p2"><span class="Apple-converted-space">            </span>totalAmount += item.getTotalAmount();</p>
-<p class="p2"><span class="Apple-converted-space">            </span>totalCount++;</p>
-<p class="p2"><span class="Apple-converted-space">        </span>}</p>
-<p class="p2"><span class="Apple-converted-space">        </span>super.write(items);</p>
-<p class="p2"><span class="Apple-converted-space">    </span>}</p>
-<p class="p2">}</p>
-<p class="p2">```</p>
-<p class="p3"><br></p>
-<p class="p2">### 11. **`TVOrderItemWriter.java`**</p>
-<p class="p3"><br></p>
-<p class="p2">```java</p>
-<p class="p2">package com.example.batch.writer;</p>
-<p class="p3"><br></p>
-<p class="p2">import com.example.batch.entity.TVOrder;</p>
-<p class="p2">import org.springframework.batch.item.file.FlatFileItemWriter;</p>
-<p class="p2">import org.springframework.batch.item.file.transform.LineAggregator;</p>
-<p class="p2">import org.springframework.beans.factory.annotation.Value;</p>
-<p class="p2">import org.springframework.core.io.FileSystemResource;</p>
-<p class="p2">import org.springframework.stereotype.Component;</p>
-<p class="p3"><br></p>
-<p class="p2">import java.time.LocalDate;</p>
-<p class="p2">import java.time.format.DateTimeFormatter;</p>
-<p class="p2">import java.util.List;</p>
-<p class="p3"><br></p>
-<p class="p2">@Component</p>
-<p class="p2">public class TVOrderItemWriter extends FlatFileItemWriter&lt;TVOrder&gt; {</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>private double totalAmount = 0.0;</p>
-<p class="p2"><span class="Apple-converted-space">    </span>private int totalCount = 0;</p>
-<p class="p2"><span class="Apple-converted-space">    </span>private final String outputFileName;</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>public TVOrderItemWriter(@Value("#{jobParameters['orderDate']}") String orderDate) {</p>
-<p class="p2"><span class="Apple-converted-space">        </span>this.outputFileName = "tvorder-" + LocalDate.now().format(DateTimeFormatter.ISO_DATE) + ".csv";</p>
-<p class="p2"><span class="Apple-converted-space">        </span>setResource(new FileSystemResource(outputFileName));</p>
-<p class="p2"><span class="Apple-converted-space">        </span>setLineAggregator((LineAggregator&lt;TVOrder&gt;) tvOrder -&gt; String.format("%d,%s,%s,%.2f",</p>
-<p class="p2"><span class="Apple-converted-space">            </span>tvOrder.getOrderId(),</p>
-<p class="p2"><span class="Apple-converted-space">            </span>tvOrder.getCustomerName(),</p>
-<p class="p2"><span class="Apple-converted-space">            </span>tvOrder.getOrderDate(),</p>
-<p class="p2"><span class="Apple-converted-space">            </span>tvOrder.getTotalAmount()));</p>
-<p class="p2"><span class="Apple-converted-space">        </span>setHeaderCallback(writer -&gt; writer.write("Order ID,Customer Name,Order Date,Total Amount"));</p>
-<p class="p2"><span class="Apple-converted-space">        </span>setFooterCallback(writer -&gt; {</p>
-<p class="p2"><span class="Apple-converted-space">            </span>writer.write("Total Records: " + totalCount + "\n");</p>
-<p class="p2"><span class="Apple-converted-space">            </span>writer.write("Total Amount: " + totalAmount + "\n");</p>
-<p class="p2"><span class="Apple-converted-space">        </span>});</p>
-<p class="p2"><span class="Apple-converted-space">    </span>}</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>@Override</p>
-<p class="p2"><span class="Apple-converted-space">    </span>public void write(List&lt;? extends TVOrder&gt; items) {</p>
-<p class="p2"><span class="Apple-converted-space">        </span>for (TVOrder item : items) {</p>
-<p class="p2"><span class="Apple-converted-space">            </span>totalAmount += item.getTotalAmount();</p>
-<p class="p2"><span class="Apple-converted-space">            </span>totalCount++;</p>
-<p class="p2"><span class="Apple-converted-space">        </span>}</p>
-<p class="p2"><span class="Apple-converted-space">        </span>super.write(items);</p>
-<p class="p2"><span class="Apple-converted-space">    </span>}</p>
-<p class="p2">}</p>
-<p class="p2">```</p>
-<p class="p3"><br></p>
-<p class="p2">### 12. **`ComputerOrderItemWriter.java`**</p>
-<p class="p3"><br></p>
-<p class="p2">```java</p>
-<p class="p2">package com.example.batch.writer;</p>
-<p class="p3"><br></p>
-<p class="p2">import com.example.batch.entity.ComputerOrder;</p>
-<p class="p2">import org.springframework.batch.item.file.FlatFileItemWriter;</p>
-<p class="p2">import org.springframework.batch.item.file.transform.LineAggregator;</p>
-<p class="p2">import org.springframework.beans.factory.annotation.Value;</p>
-<p class="p2">import org.springframework.core.io.FileSystemResource;</p>
-<p class="p2">import org.springframework.stereotype.Component;</p>
-<p class="p3"><br></p>
-<p class="p2">import java.time.LocalDate;</p>
-<p class="p2">import java.time.format.DateTimeFormatter;</p>
-<p class="p2">import java.util.List;</p>
-<p class="p3"><br></p>
-<p class="p2">@Component</p>
-<p class="p2">public class ComputerOrderItemWriter extends FlatFileItemWriter&lt;ComputerOrder&gt; {</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>private double totalAmount = 0.0;</p>
-<p class="p2"><span class="Apple-converted-space">    </span>private int totalCount = 0;</p>
-<p class="p2"><span class="Apple-converted-space">    </span>private final String outputFileName;</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>public ComputerOrderItemWriter(@Value("#{jobParameters['orderDate']}") String orderDate) {</p>
-<p class="p2"><span class="Apple-converted-space">        </span>this.outputFileName = "computerorder-" + LocalDate.now().format(DateTimeFormatter.ISO_DATE) + ".csv";</p>
-<p class="p2"><span class="Apple-converted-space">        </span>setResource(new FileSystemResource(outputFileName));</p>
-<p class="p2"><span class="Apple-converted-space">        </span>setLineAggregator((LineAggregator&lt;ComputerOrder&gt;) computerOrder -&gt; String.format("%d,%s,%s,%.2f",</p>
-<p class="p2"><span class="Apple-converted-space">            </span>computerOrder.getOrderId(),</p>
-<p class="p2"><span class="Apple-converted-space">            </span>computerOrder.getCustomerName(),</p>
-<p class="p2"><span class="Apple-converted-space">            </span>computerOrder.getOrderDate(),</p>
-<p class="p2"><span class="Apple-converted-space">            </span>computerOrder.getTotalAmount()));</p>
-<p class="p2"><span class="Apple-converted-space">        </span>setHeaderCallback(writer -&gt; writer.write("Order ID,Customer Name,Order Date,Total Amount"));</p>
-<p class="p2"><span class="Apple-converted-space">        </span>setFooterCallback(writer -&gt; {</p>
-<p class="p2"><span class="Apple-converted-space">            </span>writer.write("Total Records: " + totalCount + "\n");</p>
-<p class="p2"><span class="Apple-converted-space">            </span>writer.write("Total Amount: " + totalAmount + "\n");</p>
-<p class="p2"><span class="Apple-converted-space">        </span>});</p>
-<p class="p2"><span class="Apple-converted-space">    </span>}</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>@Override</p>
-<p class="p2"><span class="Apple-converted-space">    </span>public void write(List&lt;? extends ComputerOrder&gt; items) {</p>
-<p class="p2"><span class="Apple-converted-space">        </span>for (ComputerOrder item : items) {</p>
-<p class="p2"><span class="Apple-converted-space">            </span>totalAmount += item.getTotalAmount();</p>
-<p class="p2"><span class="Apple-converted-space">            </span>totalCount++;</p>
-<p class="p2"><span class="Apple-converted-space">        </span>}</p>
-<p class="p2"><span class="Apple-converted-space">        </span>super.write(items);</p>
-<p class="p2"><span class="Apple-converted-space">    </span>}</p>
-<p class="p2">}</p>
-<p class="p2">```</p>
-<p class="p3"><br></p>
-<p class="p2">### 13. **`ZipFileTasklet.java`**</p>
-<p class="p3"><br></p>
-<p class="p2">```java</p>
-<p class="p2">package com.example.batch.config;</p>
-<p class="p3"><br></p>
-<p class="p2">import org.springframework.batch.core.StepContribution;</p>
-<p class="p2">import org.springframework.batch.core.job.flow.support.state.TaskletStep;</p>
-<p class="p2">import org.springframework.batch.core.step.tasklet.Tasklet;</p>
-<p class="p2">import org.springframework.beans.factory.annotation.Value;</p>
-<p class="p2">import org.springframework.core.io.FileSystemResource;</p>
-<p class="p2">import org.springframework.stereotype.Component;</p>
-<p class="p2">import org.springframework.batch.repeat.RepeatStatus;</p>
-<p class="p3"><br></p>
-<p class="p2">import java.io.*;</p>
-<p class="p2">import java.nio.file.*;</p>
-<p class="p2">import java.util.zip.ZipEntry;</p>
-<p class="p2">import java.util.zip.ZipOutputStream;</p>
-<p class="p3"><br></p>
-<p class="p2">@Component</p>
-<p class="p2">public class ZipFileTasklet implements Tasklet {</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>@Value("#{jobExecutionContext['outputFileName']}")</p>
-<p class="p2"><span class="Apple-converted-space">    </span>private String outputFileName;</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>@Value("#{jobExecutionContext['totalAmount']}")</p>
-<p class="p2"><span class="Apple-converted-space">    </span>private Double totalAmount;</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>@Value("#{jobExecutionContext['totalCount']}")</p>
-<p class="p2"><span class="Apple-converted-space">    </span>private Integer totalCount;</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>@Override</p>
-<p class="p2"><span class="Apple-converted-space">    </span>public RepeatStatus execute(StepContribution contribution, ChunkContext chunkContext) throws Exception {</p>
-<p class="p2"><span class="Apple-converted-space">        </span>Path filePath = Paths.get(outputFileName);</p>
-<p class="p2"><span class="Apple-converted-space">        </span>Path zipPath = Paths.get(filePath.toString().replace(".csv", ".zip"));</p>
-<p class="p2"><span class="Apple-converted-space">        </span>Path tagFilePath = Paths.get(filePath.toString().replace(".csv", "-tag.txt"));</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">        </span>try (ZipOutputStream zos = new ZipOutputStream(new FileOutputStream(zipPath.toFile()));</p>
-<p class="p2"><span class="Apple-converted-space">             </span>BufferedWriter tagFileWriter = Files.newBufferedWriter(tagFilePath, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)) {</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">            </span>// Add the CSV file to the ZIP file</p>
-<p class="p2"><span class="Apple-converted-space">            </span>try (FileInputStream fis = new FileInputStream(filePath.toFile())) {</p>
-<p class="p2"><span class="Apple-converted-space">                </span>ZipEntry zipEntry = new ZipEntry(filePath.getFileName().toString());</p>
-<p class="p2"><span class="Apple-converted-space">                </span>zos.putNextEntry(zipEntry);</p>
-<p class="p2"><span class="Apple-converted-space">                </span>byte[] buffer = new byte[1024];</p>
-<p class="p2"><span class="Apple-converted-space">                </span>int length;</p>
-<p class="p2"><span class="Apple-converted-space">                </span>while ((length = fis.read(buffer)) &gt; 0) {</p>
-<p class="p2"><span class="Apple-converted-space">                    </span>zos.write(buffer, 0, length);</p>
-<p class="p2"><span class="Apple-converted-space">                </span>}</p>
-<p class="p2"><span class="Apple-converted-space">                </span>zos.closeEntry();</p>
-<p class="p2"><span class="Apple-converted-space">            </span>}</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">            </span>// Create the tag file</p>
-<p class="p2"><span class="Apple-converted-space">            </span>tagFileWriter.write("Total Records: " + totalCount + "\n");</p>
-<p class="p2"><span class="Apple-converted-space">            </span>tagFileWriter.write("Total Amount: " + totalAmount + "\n");</p>
-<p class="p2"><span class="Apple-converted-space">        </span>}</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">        </span>return RepeatStatus.FINISHED;</p>
-<p class="p2"><span class="Apple-converted-space">    </span>}</p>
-<p class="p2">}</p>
-<p class="p2">```</p>
-<p class="p3"><br></p>
-<p class="p2">### 14. **`JobCompletionListener.java`**</p>
-<p class="p3"><br></p>
-<p class="p2">```java</p>
-<p class="p2">package com.example.batch.listener;</p>
-<p class="p3"><br></p>
-<p class="p2">import com.example.batch.writer.OrderItemWriter;</p>
-<p class="p2">import com.example.batch.writer.TVOrderItemWriter;</p>
-<p class="p2">import com.example.batch.writer.ComputerOrderItemWriter;</p>
-<p class="p2">import org.springframework.batch.core.JobExecution;</p>
-<p class="p2">import org.springframework.batch.core.JobExecutionListener;</p>
-<p class="p2">import org.springframework.beans.factory.annotation.Autowired;</p>
-<p class="p2">import org.springframework.stereotype.Component;</p>
-<p class="p3"><br></p>
-<p class="p2">@Component</p>
-<p class="p2">public class JobCompletionListener implements JobExecutionListener {</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>@Autowired</p>
-<p class="p2"><span class="Apple-converted-space">    </span>private OrderItemWriter orderItemWriter;</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>@Autowired</p>
-<p class="p2"><span class="Apple-converted-space">    </span>private TVOrderItemWriter tvOrderItemWriter;</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>@Autowired</p>
-<p class="p2"><span class="Apple-converted-space">    </span>private ComputerOrderItemWriter computerOrderItemWriter;</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>@Override</p>
-<p class="p2"><span class="Apple-converted-space">    </span>public void beforeJob(JobExecution jobExecution) {</p>
-<p class="p2"><span class="Apple-converted-space">        </span>// No action needed before job starts</p>
-<p class="p2"><span class="Apple-converted-space">    </span>}</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>@Override</p>
-<p class="p2"><span class="Apple-converted-space">    </span>public void afterJob(JobExecution jobExecution) {</p>
-<p class="p2"><span class="Apple-converted-space">        </span>String jobName = jobExecution.getJobInstance().getJobName();</p>
-<p class="p2"><span class="Apple-converted-space">        </span>if (jobName.equals("orderJob")) {</p>
-<p class="p2"><span class="Apple-converted-space">            </span>jobExecution.getExecutionContext().put("outputFileName", orderItemWriter.getOutputFileName());</p>
-<p class="p2"><span class="Apple-converted-space">            </span>jobExecution.getExecutionContext().put("totalAmount", orderItemWriter.getTotalAmount());</p>
-<p class="p2"><span class="Apple-converted-space">            </span>jobExecution.getExecutionContext().put("totalCount", orderItemWriter.getTotalCount());</p>
-<p class="p2"><span class="Apple-converted-space">        </span>} else if (jobName.equals("tvOrderJob")) {</p>
-<p class="p2"><span class="Apple-converted-space">            </span>jobExecution.getExecutionContext().put("outputFileName", tvOrderItemWriter.getOutputFileName());</p>
-<p class="p2"><span class="Apple-converted-space">            </span>jobExecution.getExecutionContext().put("totalAmount", tvOrderItemWriter.getTotalAmount());</p>
-<p class="p2"><span class="Apple-converted-space">            </span>jobExecution.getExecutionContext().put("totalCount", tvOrderItemWriter.getTotalCount());</p>
-<p class="p2"><span class="Apple-converted-space">        </span>} else if (jobName.equals("computerOrderJob")) {</p>
-<p class="p2"><span class="Apple-converted-space">            </span>jobExecution.getExecutionContext().put("outputFileName", computerOrderItemWriter.getOutputFileName());</p>
-<p class="p2"><span class="Apple-converted-space">            </span>jobExecution.getExecutionContext().put("totalAmount", computerOrderItemWriter.getTotalAmount());</p>
-<p class="p2"><span class="Apple-converted-space">            </span>jobExecution.getExecutionContext().put("totalCount", computerOrderItemWriter.getTotalCount());</p>
-<p class="p2"><span class="Apple-converted-space">        </span>}</p>
-<p class="p2"><span class="Apple-converted-space">        </span>System.out.println("Job execution completed: " + jobName);</p>
-<p class="p2"><span class="Apple-converted-space">    </span>}</p>
-<p class="p2">}</p>
-<p class="p3"><br></p>
-<p class="p2">```</p>
-<p class="p3"><br></p>
-<p class="p2">### 15. **`application.properties`**</p>
-<p class="p3"><br></p>
-<p class="p2">```properties</p>
-<p class="p2">spring.datasource.url=jdbc:h2:mem:testdb</p>
-<p class="p2">spring.datasource.driver-class-name=org.h2.Driver</p>
-<p class="p2">spring.datasource.username=sa</p>
-<p class="p2">spring.datasource.password=password</p>
-<p class="p2">spring.batch.job.enabled=false</p>
-<p class="p3"><br></p>
-<p class="p3"><br></p>
-<p class="p2">```</p>
-<p class="p3"><br></p>
-<p class="p2">### **Explanation**</p>
-<p class="p3"><br></p>
-<p class="p2">- **Data Entities**: `Order`, `TVOrder`, and `ComputerOrder` represent the different types of orders.</p>
-<p class="p2">- **Readers**: `OrderReader`, `TVOrderReader`, and `ComputerOrderReader` use `JdbcCursorItemReader` to read data from the database. Row mapping is done using lambda functions.</p>
-<p class="p2">- **Processors**: `OrderProcessor` handles processing logic for all order types.</p>
-<p class="p2">- **Writers**: `OrderItemWriter`, `TVOrderItemWriter`, and `ComputerOrderItemWriter` write data to CSV files, with specific implementations for each order type.</p>
-<p class="p2">- **Jobs**: Configured for `Order`, `TVOrder`, and `ComputerOrder`, using the same processing and writing steps but with different readers and writers.</p>
-<p class="p2">- **Tasklets**: `ZipFileTasklet` creates a ZIP file of the output CSV and a tag file.</p>
-<p class="p2">- **Listeners**: `JobCompletionListener` logs the job completion.</p>
-<p class="p3"><br></p>
-<p class="p2">This configuration ensures that each job type (Order, TVOrder, ComputerOrder) has its own job configuration but shares common processing logic, making the codebase clean and reusable.</p>
-<p class="p3"><br></p>
-<p class="p3"><br></p>
-<p class="p3"><br></p>
-<p class="p3"><br></p>
-<p class="p2">ere is the complete project structure, including all Java classes necessary to handle `TVOrder` and `ComputerOrder` with separate jobs but leveraging code reuse and abstraction.</p>
-<p class="p3"><br></p>
-<p class="p2">### **Project Structure**</p>
-<p class="p3"><br></p>
-<p class="p2">```</p>
-<p class="p2">src</p>
-<p class="p2">└── main</p>
-<p class="p2"><span class="Apple-converted-space">    </span>└── java</p>
-<p class="p2"><span class="Apple-converted-space">        </span>└── com</p>
-<p class="p2"><span class="Apple-converted-space">            </span>└── example</p>
-<p class="p2"><span class="Apple-converted-space">                </span>└── batch</p>
-<p class="p2"><span class="Apple-converted-space">                    </span>├── BatchApplication.java</p>
-<p class="p2"><span class="Apple-converted-space">                    </span>├── config</p>
-<p class="p2"><span class="Apple-converted-space">                    </span>│ <span class="Apple-converted-space">  </span>├── AbstractOrderJobConfig.java</p>
-<p class="p2"><span class="Apple-converted-space">                    </span>│ <span class="Apple-converted-space">  </span>├── TVOrderJobConfig.java</p>
-<p class="p2"><span class="Apple-converted-space">                    </span>│ <span class="Apple-converted-space">  </span>├── ComputerOrderJobConfig.java</p>
-<p class="p2"><span class="Apple-converted-space">                    </span>│ <span class="Apple-converted-space">  </span>└── ZipFileTasklet.java</p>
-<p class="p2"><span class="Apple-converted-space">                    </span>├── entity</p>
-<p class="p2"><span class="Apple-converted-space">                    </span>│ <span class="Apple-converted-space">  </span>├── Order.java</p>
-<p class="p2"><span class="Apple-converted-space">                    </span>│ <span class="Apple-converted-space">  </span>├── TVOrder.java</p>
-<p class="p2"><span class="Apple-converted-space">                    </span>│ <span class="Apple-converted-space">  </span>└── ComputerOrder.java</p>
-<p class="p2"><span class="Apple-converted-space">                    </span>├── listener</p>
-<p class="p2"><span class="Apple-converted-space">                    </span>│ <span class="Apple-converted-space">  </span>└── JobCompletionListener.java</p>
-<p class="p2"><span class="Apple-converted-space">                    </span>├── mapper</p>
-<p class="p2"><span class="Apple-converted-space">                    </span>│ <span class="Apple-converted-space">  </span>├── OrderRowMapper.java</p>
-<p class="p2"><span class="Apple-converted-space">                    </span>│ <span class="Apple-converted-space">  </span>├── TVOrderRowMapper.java</p>
-<p class="p2"><span class="Apple-converted-space">                    </span>│ <span class="Apple-converted-space">  </span>└── ComputerOrderRowMapper.java</p>
-<p class="p2"><span class="Apple-converted-space">                    </span>├── processor</p>
-<p class="p2"><span class="Apple-converted-space">                    </span>│ <span class="Apple-converted-space">  </span>└── OrderProcessor.java</p>
-<p class="p2"><span class="Apple-converted-space">                    </span>├── reader</p>
-<p class="p2"><span class="Apple-converted-space">                    </span>│ <span class="Apple-converted-space">  </span>├── OrderReader.java</p>
-<p class="p2"><span class="Apple-converted-space">                    </span>│ <span class="Apple-converted-space">  </span>├── TVOrderReader.java</p>
-<p class="p2"><span class="Apple-converted-space">                    </span>│ <span class="Apple-converted-space">  </span>└── ComputerOrderReader.java</p>
-<p class="p2"><span class="Apple-converted-space">                    </span>└── writer</p>
-<p class="p2"><span class="Apple-converted-space">                        </span>├── OrderItemWriter.java</p>
-<p class="p2"><span class="Apple-converted-space">                        </span>├── TVOrderItemWriter.java</p>
-<p class="p2"><span class="Apple-converted-space">                        </span>└── ComputerOrderItemWriter.java</p>
-<p class="p2">```</p>
-<p class="p3"><br></p>
-<p class="p2">### **1. `BatchApplication.java`**</p>
-<p class="p3"><br></p>
-<p class="p2">```java</p>
-<p class="p2">package com.example.batch;</p>
-<p class="p3"><br></p>
-<p class="p2">import org.springframework.boot.SpringApplication;</p>
-<p class="p2">import org.springframework.boot.autoconfigure.SpringBootApplication;</p>
-<p class="p3"><br></p>
-<p class="p2">@SpringBootApplication</p>
-<p class="p2">public class BatchApplication {</p>
-<p class="p2"><span class="Apple-converted-space">    </span>public static void main(String[] args) {</p>
-<p class="p2"><span class="Apple-converted-space">        </span>SpringApplication.run(BatchApplication.class, args);</p>
-<p class="p2"><span class="Apple-converted-space">    </span>}</p>
-<p class="p2">}</p>
-<p class="p2">```</p>
-<p class="p3"><br></p>
-<p class="p2">### **2. `config/AbstractOrderJobConfig.java**</p>
-<p class="p3"><br></p>
-<p class="p2">```java</p>
-<p class="p2">package com.example.batch.config;</p>
-<p class="p3"><br></p>
-<p class="p2">import com.example.batch.processor.OrderProcessor;</p>
-<p class="p2">import org.springframework.batch.core.Job;</p>
-<p class="p2">import org.springframework.batch.core.Step;</p>
-<p class="p2">import org.springframework.batch.core.configuration.annotation.JobBuilderFactory;</p>
-<p class="p2">import org.springframework.batch.core.configuration.annotation.StepBuilderFactory;</p>
-<p class="p2">import org.springframework.batch.core.step.tasklet.Tasklet;</p>
-<p class="p2">import org.springframework.batch.item.ItemProcessor;</p>
-<p class="p2">import org.springframework.batch.item.ItemReader;</p>
-<p class="p2">import org.springframework.batch.item.ItemWriter;</p>
-<p class="p2">import org.springframework.beans.factory.annotation.Autowired;</p>
-<p class="p2">import org.springframework.context.annotation.Bean;</p>
-<p class="p2">import org.springframework.context.annotation.Configuration;</p>
-<p class="p3"><br></p>
-<p class="p2">@Configuration</p>
-<p class="p2">public abstract class AbstractOrderJobConfig&lt;T&gt; {</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>@Autowired</p>
-<p class="p2"><span class="Apple-converted-space">    </span>protected JobBuilderFactory jobBuilderFactory;</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>@Autowired</p>
-<p class="p2"><span class="Apple-converted-space">    </span>protected StepBuilderFactory stepBuilderFactory;</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>@Bean</p>
-<p class="p2"><span class="Apple-converted-space">    </span>public abstract Job orderJob(Step processStep, Step zipStep);</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>@Bean</p>
-<p class="p2"><span class="Apple-converted-space">    </span>public abstract Step processStep();</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>@Bean</p>
-<p class="p2"><span class="Apple-converted-space">    </span>public abstract Step zipStep();</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>protected Step processStep(ItemReader&lt;T&gt; reader, ItemProcessor&lt;T, T&gt; processor, ItemWriter&lt;T&gt; writer) {</p>
-<p class="p2"><span class="Apple-converted-space">        </span>return stepBuilderFactory.get(getProcessStepName())</p>
-<p class="p2"><span class="Apple-converted-space">                </span>.&lt;T, T&gt;chunk(10)</p>
-<p class="p2"><span class="Apple-converted-space">                </span>.reader(reader)</p>
-<p class="p2"><span class="Apple-converted-space">                </span>.processor(processor)</p>
-<p class="p2"><span class="Apple-converted-space">                </span>.writer(writer)</p>
-<p class="p2"><span class="Apple-converted-space">                </span>.build();</p>
-<p class="p2"><span class="Apple-converted-space">    </span>}</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>protected Step zipStep() {</p>
-<p class="p2"><span class="Apple-converted-space">        </span>return stepBuilderFactory.get(getZipStepName())</p>
-<p class="p2"><span class="Apple-converted-space">                </span>.tasklet(new ZipFileTasklet())</p>
-<p class="p2"><span class="Apple-converted-space">                </span>.build();</p>
-<p class="p2"><span class="Apple-converted-space">    </span>}</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>protected abstract String getJobName();</p>
-<p class="p2"><span class="Apple-converted-space">    </span>protected abstract String getProcessStepName();</p>
-<p class="p2"><span class="Apple-converted-space">    </span>protected abstract String getZipStepName();</p>
-<p class="p2"><span class="Apple-converted-space">    </span>protected abstract ItemReader&lt;T&gt; getOrderReader();</p>
-<p class="p2"><span class="Apple-converted-space">    </span>protected abstract ItemWriter&lt;T&gt; getItemWriter();</p>
-<p class="p2">}</p>
-<p class="p2">```</p>
-<p class="p3"><br></p>
-<p class="p2">### **3. `config/TVOrderJobConfig.java`**</p>
-<p class="p3"><br></p>
-<p class="p2">```java</p>
-<p class="p2">package com.example.batch.config;</p>
-<p class="p3"><br></p>
-<p class="p2">import com.example.batch.entity.TVOrder;</p>
-<p class="p2">import com.example.batch.writer.TVOrderItemWriter;</p>
-<p class="p2">import org.springframework.batch.core.Job;</p>
-<p class="p2">import org.springframework.batch.core.Step;</p>
-<p class="p2">import org.springframework.batch.core.configuration.annotation.EnableBatchProcessing;</p>
-<p class="p2">import org.springframework.batch.core.configuration.annotation.JobBuilderFactory;</p>
-<p class="p2">import org.springframework.batch.core.configuration.annotation.StepBuilderFactory;</p>
-<p class="p2">import org.springframework.beans.factory.annotation.Autowired;</p>
-<p class="p2">import org.springframework.context.annotation.Bean;</p>
-<p class="p2">import org.springframework.context.annotation.Configuration;</p>
-<p class="p3"><br></p>
-<p class="p2">@Configuration</p>
-<p class="p2">@EnableBatchProcessing</p>
-<p class="p2">public class TVOrderJobConfig extends AbstractOrderJobConfig&lt;TVOrder&gt; {</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>@Autowired</p>
-<p class="p2"><span class="Apple-converted-space">    </span>private TVOrderReader tvOrderReader;</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>@Autowired</p>
-<p class="p2"><span class="Apple-converted-space">    </span>private TVOrderItemWriter tvOrderItemWriter;</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>@Bean</p>
-<p class="p2"><span class="Apple-converted-space">    </span>@Override</p>
-<p class="p2"><span class="Apple-converted-space">    </span>public Job orderJob(Step processStep, Step zipStep) {</p>
-<p class="p2"><span class="Apple-converted-space">        </span>return jobBuilderFactory.get(getJobName())</p>
-<p class="p2"><span class="Apple-converted-space">                </span>.start(processStep)</p>
-<p class="p2"><span class="Apple-converted-space">                </span>.next(zipStep)</p>
-<p class="p2"><span class="Apple-converted-space">                </span>.build();</p>
-<p class="p2"><span class="Apple-converted-space">    </span>}</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>@Bean</p>
-<p class="p2"><span class="Apple-converted-space">    </span>@Override</p>
-<p class="p2"><span class="Apple-converted-space">    </span>public Step processStep() {</p>
-<p class="p2"><span class="Apple-converted-space">        </span>return super.processStep(tvOrderReader, new OrderProcessor(), tvOrderItemWriter);</p>
-<p class="p2"><span class="Apple-converted-space">    </span>}</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>@Bean</p>
-<p class="p2"><span class="Apple-converted-space">    </span>@Override</p>
-<p class="p2"><span class="Apple-converted-space">    </span>public Step zipStep() {</p>
-<p class="p2"><span class="Apple-converted-space">        </span>return super.zipStep();</p>
-<p class="p2"><span class="Apple-converted-space">    </span>}</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>@Override</p>
-<p class="p2"><span class="Apple-converted-space">    </span>protected String getJobName() {</p>
-<p class="p2"><span class="Apple-converted-space">        </span>return "tvOrderJob";</p>
-<p class="p2"><span class="Apple-converted-space">    </span>}</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>@Override</p>
-<p class="p2"><span class="Apple-converted-space">    </span>protected String getProcessStepName() {</p>
-<p class="p2"><span class="Apple-converted-space">        </span>return "tvOrderProcessStep";</p>
-<p class="p2"><span class="Apple-converted-space">    </span>}</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>@Override</p>
-<p class="p2"><span class="Apple-converted-space">    </span>protected String getZipStepName() {</p>
-<p class="p2"><span class="Apple-converted-space">        </span>return "tvOrderZipStep";</p>
-<p class="p2"><span class="Apple-converted-space">    </span>}</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>@Override</p>
-<p class="p2"><span class="Apple-converted-space">    </span>protected TVOrderReader getOrderReader() {</p>
-<p class="p2"><span class="Apple-converted-space">        </span>return tvOrderReader;</p>
-<p class="p2"><span class="Apple-converted-space">    </span>}</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>@Override</p>
-<p class="p2"><span class="Apple-converted-space">    </span>protected TVOrderItemWriter getItemWriter() {</p>
-<p class="p2"><span class="Apple-converted-space">        </span>return tvOrderItemWriter;</p>
-<p class="p2"><span class="Apple-converted-space">    </span>}</p>
-<p class="p2">}</p>
-<p class="p2">```</p>
-<p class="p3"><br></p>
-<p class="p2">### **4. `config/ComputerOrderJobConfig.java`**</p>
-<p class="p3"><br></p>
-<p class="p2">```java</p>
-<p class="p2">package com.example.batch.config;</p>
-<p class="p3"><br></p>
-<p class="p2">import com.example.batch.entity.ComputerOrder;</p>
-<p class="p2">import com.example.batch.writer.ComputerOrderItemWriter;</p>
-<p class="p2">import org.springframework.batch.core.Job;</p>
-<p class="p2">import org.springframework.batch.core.Step;</p>
-<p class="p2">import org.springframework.batch.core.configuration.annotation.EnableBatchProcessing;</p>
-<p class="p2">import org.springframework.batch.core.configuration.annotation.JobBuilderFactory;</p>
-<p class="p2">import org.springframework.batch.core.configuration.annotation.StepBuilderFactory;</p>
-<p class="p2">import org.springframework.beans.factory.annotation.Autowired;</p>
-<p class="p2">import org.springframework.context.annotation.Bean;</p>
-<p class="p2">import org.springframework.context.annotation.Configuration;</p>
-<p class="p3"><br></p>
-<p class="p2">@Configuration</p>
-<p class="p2">@EnableBatchProcessing</p>
-<p class="p2">public class ComputerOrderJobConfig extends AbstractOrderJobConfig&lt;ComputerOrder&gt; {</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>@Autowired</p>
-<p class="p2"><span class="Apple-converted-space">    </span>private ComputerOrderReader computerOrderReader;</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>@Autowired</p>
-<p class="p2"><span class="Apple-converted-space">    </span>private ComputerOrderItemWriter computerOrderItemWriter;</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>@Bean</p>
-<p class="p2"><span class="Apple-converted-space">    </span>@Override</p>
-<p class="p2"><span class="Apple-converted-space">    </span>public Job orderJob(Step processStep, Step zipStep) {</p>
-<p class="p2"><span class="Apple-converted-space">        </span>return jobBuilderFactory.get(getJobName())</p>
-<p class="p2"><span class="Apple-converted-space">                </span>.start(processStep)</p>
-<p class="p2"><span class="Apple-converted-space">                </span>.next(zipStep)</p>
-<p class="p2"><span class="Apple-converted-space">                </span>.build();</p>
-<p class="p2"><span class="Apple-converted-space">    </span>}</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>@Bean</p>
-<p class="p2"><span class="Apple-converted-space">    </span>@Override</p>
-<p class="p2"><span class="Apple-converted-space">    </span>public Step processStep() {</p>
-<p class="p2"><span class="Apple-converted-space">        </span>return super.processStep(computerOrderReader, new OrderProcessor(), computerOrderItemWriter);</p>
-<p class="p2"><span class="Apple-converted-space">    </span>}</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>@Bean</p>
-<p class="p2"><span class="Apple-converted-space">    </span>@Override</p>
-<p class="p2"><span class="Apple-converted-space">    </span>public Step zipStep() {</p>
-<p class="p2"><span class="Apple-converted-space">        </span>return super.zipStep();</p>
-<p class="p2"><span class="Apple-converted-space">    </span>}</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>@Override</p>
-<p class="p2"><span class="Apple-converted-space">    </span>protected String getJobName() {</p>
-<p class="p2"><span class="Apple-converted-space">        </span>return "computerOrderJob";</p>
-<p class="p2"><span class="Apple-converted-space">    </span>}</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>@Override</p>
-<p class="p2"><span class="Apple-converted-space">    </span>protected String getProcessStepName() {</p>
-<p class="p2"><span class="Apple-converted-space">        </span>return "computerOrderProcessStep";</p>
-<p class="p2"><span class="Apple-converted-space">    </span>}</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>@Override</p>
-<p class="p2"><span class="Apple-converted-space">    </span>protected String getZipStepName() {</p>
-<p class="p2"><span class="Apple-converted-space">        </span>return "computerOrderZipStep";</p>
-<p class="p2"><span class="Apple-converted-space">    </span>}</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>@Override</p>
-<p class="p2"><span class="Apple-converted-space">    </span>protected ComputerOrderReader getOrderReader() {</p>
-<p class="p2"><span class="Apple-converted-space">        </span>return computerOrderReader;</p>
-<p class="p2"><span class="Apple-converted-space">    </span>}</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>@Override</p>
-<p class="p2"><span class="Apple-converted-space">    </span>protected ComputerOrderItemWriter getItemWriter() {</p>
-<p class="p2"><span class="Apple-converted-space">        </span>return computerOrderItemWriter;</p>
-<p class="p2"><span class="Apple-converted-space">    </span>}</p>
-<p class="p2">}</p>
-<p class="p2">```</p>
-<p class="p3"><br></p>
-<p class="p2">### **5. `config/ZipFileTasklet.java`**</p>
-<p class="p3"><br></p>
-<p class="p2">```java</p>
-<p class="p2">package com.example.batch.config;</p>
-<p class="p3"><br></p>
-<p class="p2">import org.springframework.batch.core.StepContribution;</p>
-<p class="p2">import org.springframework.batch.core.job.flow.support.state.TaskletStep;</p>
-<p class="p2">import org.springframework.batch.core.step.tasklet.Tasklet;</p>
-<p class="p2">import org.springframework.beans.factory.annotation.Value;</p>
-<p class="p2">import org.springframework.core.io.FileSystemResource;</p>
-<p class="p2">import org.springframework.stereotype.Component;</p>
-<p class="p2">import org.springframework.batch.repeat.RepeatStatus;</p>
-<p class="p3"><br></p>
-<p class="p2">import java.io.*;</p>
-<p class="p2">import java.nio.file.*;</p>
-<p class="p2">import java.util.zip.ZipEntry;</p>
-<p class="p2">import java.util.zip.ZipOutputStream;</p>
-<p class="p3"><br></p>
-<p class="p2">@Component</p>
-<p class="p2">public class ZipFileTasklet implements Tasklet {</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>@Value("#{jobExecutionContext['outputFileName']}")</p>
-<p class="p2"><span class="Apple-converted-space">    </span>private String outputFileName;</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>@Value("#{jobExecutionContext['totalAmount']}")</p>
-<p class="p2"><span class="Apple-converted-space">    </span>private Double totalAmount;</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>@Value("#{jobExecutionContext['totalCount']}")</p>
-<p class="p2"><span class="Apple-converted-space">    </span>private Integer totalCount;</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>@Override</p>
-<p class="p2"><span class="Apple-converted-space">    </span>public RepeatStatus execute(StepContribution contribution, ChunkContext chunkContext) throws Exception {</p>
-<p class="p2"><span class="Apple-converted-space">        </span>Path filePath = Paths.get(outputFileName);</p>
-<p class="p2"><span class="Apple-converted-space">        </span>Path zipPath = Paths.get(filePath.toString().replace(".csv", ".zip"));</p>
-<p class="p2"><span class="Apple-converted-space">        </span>Path tagFilePath = Paths.get(filePath.toString().replace(".csv", "-tag.txt"));</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">        </span>try (ZipOutputStream zos = new ZipOutputStream(new FileOutputStream(zipPath.toFile()));</p>
-<p class="p2"><span class="Apple-converted-space">             </span>BufferedWriter tagFileWriter = Files.newBufferedWriter(tagFilePath, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)) {</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">            </span>// Add the CSV file to the ZIP file</p>
-<p class="p2"><span class="Apple-converted-space">            </span>try (FileInputStream fis = new FileInputStream(filePath.toFile())) {</p>
-<p class="p2"><span class="Apple-converted-space">                </span>ZipEntry zipEntry = new ZipEntry(filePath.getFileName().toString());</p>
-<p class="p2"><span class="Apple-converted-space">                </span>zos.putNextEntry(zipEntry);</p>
-<p class="p2"><span class="Apple-converted-space">                </span>byte[] buffer = new byte[1024];</p>
-<p class="p2"><span class="Apple-converted-space">                </span>int length;</p>
-<p class="p2"><span class="Apple-converted-space">                </span>while ((length = fis.read(buffer)) &gt; 0) {</p>
-<p class="p2"><span class="Apple-converted-space">                    </span>zos.write(buffer, 0, length);</p>
-<p class="p2"><span class="Apple-converted-space">                </span>}</p>
-<p class="p2"><span class="Apple-converted-space">                </span>zos.closeEntry();</p>
-<p class="p2"><span class="Apple-converted-space">            </span>}</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">            </span>// Create the tag file</p>
-<p class="p2"><span class="Apple-converted-space">            </span>tagFileWriter.write("Total Records: " + totalCount + "\n");</p>
-<p class="p2"><span class="Apple-converted-space">            </span>tagFileWriter.write("Total Amount: " + totalAmount + "\n");</p>
-<p class="p2"><span class="Apple-converted-space">        </span>}</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">        </span>return RepeatStatus.FINISHED;</p>
-<p class="p2"><span class="Apple-converted-space">    </span>}</p>
-<p class="p2">}</p>
-<p class="p2">```</p>
-<p class="p3"><br></p>
-<p class="p2">### **6. `entity/Order.java`**</p>
-<p class="p3"><br></p>
-<p class="p2">```java</p>
-<p class="p2">package com.example.batch.entity;</p>
-<p class="p3"><br></p>
-<p class="p2">import lombok.Data;</p>
-<p class="p2">import lombok.NoArgsConstructor;</p>
-<p class="p3"><br></p>
-<p class="p2">import java.time.LocalDate;</p>
-<p class="p3"><br></p>
-<p class="p2">@Data</p>
-<p class="p2">@NoArgsConstructor</p>
-<p class="p2">public class Order {</p>
-<p class="p2"><span class="Apple-converted-space">    </span>private int orderId;</p>
-<p class="p2"><span class="Apple-converted-space">    </span>private String customerName;</p>
-<p class="p2"><span class="Apple-converted-space">    </span>private LocalDate orderDate;</p>
-<p class="p2"><span class="Apple-converted-space">    </span>private</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space"> </span>double amount;</p>
-<p class="p2">}</p>
-<p class="p2">```</p>
-<p class="p3"><br></p>
-<p class="p2">### **7. `entity/TVOrder.java`**</p>
-<p class="p3"><br></p>
-<p class="p2">```java</p>
-<p class="p2">package com.example.batch.entity;</p>
-<p class="p3"><br></p>
-<p class="p2">public class TVOrder extends Order {</p>
-<p class="p2"><span class="Apple-converted-space">    </span>private String tvModel;</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>// Getters and setters</p>
-<p class="p2">}</p>
-<p class="p2">```</p>
-<p class="p3"><br></p>
-<p class="p2">### **8. `entity/ComputerOrder.java`**</p>
-<p class="p3"><br></p>
-<p class="p2">```java</p>
-<p class="p2">package com.example.batch.entity;</p>
-<p class="p3"><br></p>
-<p class="p2">public class ComputerOrder extends Order {</p>
-<p class="p2"><span class="Apple-converted-space">    </span>private String computerModel;</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>// Getters and setters</p>
-<p class="p2">}</p>
-<p class="p2">```</p>
-<p class="p3"><br></p>
-<p class="p2">### **9. `mapper/OrderRowMapper.java`**</p>
-<p class="p3"><br></p>
-<p class="p2">```java</p>
-<p class="p2">package com.example.batch.mapper;</p>
-<p class="p3"><br></p>
-<p class="p2">import com.example.batch.entity.Order;</p>
-<p class="p2">import org.springframework.jdbc.core.RowMapper;</p>
-<p class="p3"><br></p>
-<p class="p2">import java.sql.ResultSet;</p>
-<p class="p2">import java.sql.SQLException;</p>
-<p class="p3"><br></p>
-<p class="p2">public abstract class OrderRowMapper&lt;T extends Order&gt; implements RowMapper&lt;T&gt; {</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>@Override</p>
-<p class="p2"><span class="Apple-converted-space">    </span>public T mapRow(ResultSet rs, int rowNum) throws SQLException {</p>
-<p class="p2"><span class="Apple-converted-space">        </span>T order = createOrder();</p>
-<p class="p2"><span class="Apple-converted-space">        </span>order.setOrderId(rs.getInt("order_id"));</p>
-<p class="p2"><span class="Apple-converted-space">        </span>order.setCustomerName(rs.getString("customer_name"));</p>
-<p class="p2"><span class="Apple-converted-space">        </span>order.setOrderDate(rs.getDate("order_date").toLocalDate());</p>
-<p class="p2"><span class="Apple-converted-space">        </span>order.setAmount(rs.getDouble("amount"));</p>
-<p class="p2"><span class="Apple-converted-space">        </span>mapAdditionalFields(rs, order);</p>
-<p class="p2"><span class="Apple-converted-space">        </span>return order;</p>
-<p class="p2"><span class="Apple-converted-space">    </span>}</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>protected abstract T createOrder();</p>
-<p class="p2"><span class="Apple-converted-space">    </span>protected abstract void mapAdditionalFields(ResultSet rs, T order) throws SQLException;</p>
-<p class="p2">}</p>
-<p class="p2">```</p>
-<p class="p3"><br></p>
-<p class="p2">### **10. `mapper/TVOrderRowMapper.java`**</p>
-<p class="p3"><br></p>
-<p class="p2">```java</p>
-<p class="p2">package com.example.batch.mapper;</p>
-<p class="p3"><br></p>
-<p class="p2">import com.example.batch.entity.TVOrder;</p>
-<p class="p2">import org.springframework.stereotype.Component;</p>
-<p class="p3"><br></p>
-<p class="p2">import java.sql.ResultSet;</p>
-<p class="p2">import java.sql.SQLException;</p>
-<p class="p3"><br></p>
-<p class="p2">@Component</p>
-<p class="p2">public class TVOrderRowMapper extends OrderRowMapper&lt;TVOrder&gt; {</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>@Override</p>
-<p class="p2"><span class="Apple-converted-space">    </span>protected TVOrder createOrder() {</p>
-<p class="p2"><span class="Apple-converted-space">        </span>return new TVOrder();</p>
-<p class="p2"><span class="Apple-converted-space">    </span>}</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>@Override</p>
-<p class="p2"><span class="Apple-converted-space">    </span>protected void mapAdditionalFields(ResultSet rs, TVOrder order) throws SQLException {</p>
-<p class="p2"><span class="Apple-converted-space">        </span>order.setTvModel(rs.getString("tv_model"));</p>
-<p class="p2"><span class="Apple-converted-space">    </span>}</p>
-<p class="p2">}</p>
-<p class="p2">```</p>
-<p class="p3"><br></p>
-<p class="p2">### **11. `mapper/ComputerOrderRowMapper.java`**</p>
-<p class="p3"><br></p>
-<p class="p2">```java</p>
-<p class="p2">package com.example.batch.mapper;</p>
-<p class="p3"><br></p>
-<p class="p2">import com.example.batch.entity.ComputerOrder;</p>
-<p class="p2">import org.springframework.stereotype.Component;</p>
-<p class="p3"><br></p>
-<p class="p2">import java.sql.ResultSet;</p>
-<p class="p2">import java.sql.SQLException;</p>
-<p class="p3"><br></p>
-<p class="p2">@Component</p>
-<p class="p2">public class ComputerOrderRowMapper extends OrderRowMapper&lt;ComputerOrder&gt; {</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>@Override</p>
-<p class="p2"><span class="Apple-converted-space">    </span>protected ComputerOrder createOrder() {</p>
-<p class="p2"><span class="Apple-converted-space">        </span>return new ComputerOrder();</p>
-<p class="p2"><span class="Apple-converted-space">    </span>}</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>@Override</p>
-<p class="p2"><span class="Apple-converted-space">    </span>protected void mapAdditionalFields(ResultSet rs, ComputerOrder order) throws SQLException {</p>
-<p class="p2"><span class="Apple-converted-space">        </span>order.setComputerModel(rs.getString("computer_model"));</p>
-<p class="p2"><span class="Apple-converted-space">    </span>}</p>
-<p class="p2">}</p>
-<p class="p2">```</p>
-<p class="p3"><br></p>
-<p class="p2">### **12. `processor/OrderProcessor.java`**</p>
-<p class="p3"><br></p>
-<p class="p2">```java</p>
-<p class="p2">package com.example.batch.processor;</p>
-<p class="p3"><br></p>
-<p class="p2">import com.example.batch.entity.Order;</p>
-<p class="p2">import org.springframework.batch.item.ItemProcessor;</p>
-<p class="p2">import org.springframework.stereotype.Component;</p>
-<p class="p3"><br></p>
-<p class="p2">@Component</p>
-<p class="p2">public class OrderProcessor implements ItemProcessor&lt;Order, Order&gt; {</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>@Override</p>
-<p class="p2"><span class="Apple-converted-space">    </span>public Order process(Order order) throws Exception {</p>
-<p class="p2"><span class="Apple-converted-space">        </span>// Add custom processing logic if needed</p>
-<p class="p2"><span class="Apple-converted-space">        </span>return order;</p>
-<p class="p2"><span class="Apple-converted-space">    </span>}</p>
-<p class="p2">}</p>
-<p class="p2">```</p>
-<p class="p3"><br></p>
-<p class="p2">### **13. `reader/OrderReader.java`**</p>
-<p class="p3"><br></p>
-<p class="p2">```java</p>
-<p class="p2">package com.example.batch.reader;</p>
-<p class="p3"><br></p>
-<p class="p2">import com.example.batch.entity.Order;</p>
-<p class="p2">import com.example.batch.mapper.OrderRowMapper;</p>
-<p class="p2">import org.springframework.batch.item.database.JdbcCursorItemReader;</p>
-<p class="p2">import org.springframework.stereotype.Component;</p>
-<p class="p3"><br></p>
-<p class="p2">@Component</p>
-<p class="p2">public abstract class OrderReader&lt;T extends Order&gt; extends JdbcCursorItemReader&lt;T&gt; {</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>public OrderReader(String sql, OrderRowMapper&lt;T&gt; rowMapper) {</p>
-<p class="p2"><span class="Apple-converted-space">        </span>super();</p>
-<p class="p2"><span class="Apple-converted-space">        </span>setSql(sql);</p>
-<p class="p2"><span class="Apple-converted-space">        </span>setRowMapper(rowMapper);</p>
-<p class="p2"><span class="Apple-converted-space">        </span>setFetchSize(10);</p>
-<p class="p2"><span class="Apple-converted-space">    </span>}</p>
-<p class="p2">}</p>
-<p class="p2">```</p>
-<p class="p3"><br></p>
-<p class="p2">### **14. `reader/TVOrderReader.java`**</p>
-<p class="p3"><br></p>
-<p class="p2">```java</p>
-<p class="p2">package com.example.batch.reader;</p>
-<p class="p3"><br></p>
-<p class="p2">import com.example.batch.entity.TVOrder;</p>
-<p class="p2">import com.example.batch.mapper.TVOrderRowMapper;</p>
-<p class="p2">import org.springframework.beans.factory.annotation.Autowired;</p>
-<p class="p2">import org.springframework.stereotype.Component;</p>
-<p class="p3"><br></p>
-<p class="p2">@Component</p>
-<p class="p2">public class TVOrderReader extends OrderReader&lt;TVOrder&gt; {</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>@Autowired</p>
-<p class="p2"><span class="Apple-converted-space">    </span>public TVOrderReader(TVOrderRowMapper rowMapper) {</p>
-<p class="p2"><span class="Apple-converted-space">        </span>super("SELECT * FROM tv_orders", rowMapper);</p>
-<p class="p2"><span class="Apple-converted-space">    </span>}</p>
-<p class="p2">}</p>
-<p class="p2">```</p>
-<p class="p3"><br></p>
-<p class="p2">### **15. `reader/ComputerOrderReader.java`**</p>
-<p class="p3"><br></p>
-<p class="p2">```java</p>
-<p class="p2">package com.example.batch.reader;</p>
-<p class="p3"><br></p>
-<p class="p2">import com.example.batch.entity.ComputerOrder;</p>
-<p class="p2">import com.example.batch.mapper.ComputerOrderRowMapper;</p>
-<p class="p2">import org.springframework.beans.factory.annotation.Autowired;</p>
-<p class="p2">import org.springframework.stereotype.Component;</p>
-<p class="p3"><br></p>
-<p class="p2">@Component</p>
-<p class="p2">public class ComputerOrderReader extends OrderReader&lt;ComputerOrder&gt; {</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>@Autowired</p>
-<p class="p2"><span class="Apple-converted-space">    </span>public ComputerOrderReader(ComputerOrderRowMapper rowMapper) {</p>
-<p class="p2"><span class="Apple-converted-space">        </span>super("SELECT * FROM computer_orders", rowMapper);</p>
-<p class="p2"><span class="Apple-converted-space">    </span>}</p>
-<p class="p2">}</p>
-<p class="p2">```</p>
-<p class="p3"><br></p>
-<p class="p2">### **16. `writer/OrderItemWriter.java`**</p>
-<p class="p3"><br></p>
-<p class="p2">```java</p>
-<p class="p2">package com.example.batch.writer;</p>
-<p class="p3"><br></p>
-<p class="p2">import com.example.batch.entity.Order;</p>
-<p class="p2">import org.springframework.batch.item.ItemWriter;</p>
-<p class="p2">import org.springframework.stereotype.Component;</p>
-<p class="p3"><br></p>
-<p class="p2">import java.util.List;</p>
-<p class="p3"><br></p>
-<p class="p2">@Component</p>
-<p class="p2">public abstract class OrderItemWriter&lt;T extends Order&gt; implements ItemWriter&lt;T&gt; {</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>@Override</p>
-<p class="p2"><span class="Apple-converted-space">    </span>public void write(List&lt;? extends T&gt; items) throws Exception {</p>
-<p class="p2"><span class="Apple-converted-space">        </span>// Default implementation can be overridden in specific writers</p>
-<p class="p2"><span class="Apple-converted-space">        </span>for (T item : items) {</p>
-<p class="p2"><span class="Apple-converted-space">            </span>writeItem(item);</p>
-<p class="p2"><span class="Apple-converted-space">        </span>}</p>
-<p class="p2"><span class="Apple-converted-space">    </span>}</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>protected abstract void writeItem(T item) throws Exception;</p>
-<p class="p2">}</p>
-<p class="p2">```</p>
-<p class="p3"><br></p>
-<p class="p2">### **17. `writer/TVOrderItemWriter.java`**</p>
-<p class="p3"><br></p>
-<p class="p2">```java</p>
-<p class="p2">package com.example.batch.writer;</p>
-<p class="p3"><br></p>
-<p class="p2">import com.example.batch.entity.TVOrder;</p>
-<p class="p2">import org.springframework.stereotype.Component;</p>
-<p class="p3"><br></p>
-<p class="p2">@Component</p>
-<p class="p2">public class TVOrderItemWriter extends OrderItemWriter&lt;TVOrder&gt; {</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>@Override</p>
-<p class="p2"><span class="Apple-converted-space">    </span>protected void writeItem(TVOrder item) throws Exception {</p>
-<p class="p2"><span class="Apple-converted-space">        </span>// Implementation for writing TVOrder</p>
-<p class="p2"><span class="Apple-converted-space">        </span>System.out.println("Writing TV Order: " + item);</p>
-<p class="p2"><span class="Apple-converted-space">    </span>}</p>
-<p class="p2">}</p>
-<p class="p2">```</p>
-<p class="p3"><br></p>
-<p class="p2">### **18. `writer/ComputerOrderItemWriter.java`**</p>
-<p class="p3"><br></p>
-<p class="p2">```java</p>
-<p class="p2">package com.example.batch.writer;</p>
-<p class="p3"><br></p>
-<p class="p2">import com.example.batch.entity.ComputerOrder;</p>
-<p class="p2">import org.springframework.stereotype.Component;</p>
-<p class="p3"><br></p>
-<p class="p2">@Component</p>
-<p class="p2">public class ComputerOrderItemWriter extends OrderItemWriter&lt;ComputerOrder&gt; {</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>@Override</p>
-<p class="p2"><span class="Apple-converted-space">    </span>protected void writeItem(ComputerOrder item) throws Exception {</p>
-<p class="p2"><span class="Apple-converted-space">        </span>// Implementation for writing ComputerOrder</p>
-<p class="p2"><span class="Apple-converted-space">        </span>System.out.println("Writing Computer Order: " + item);</p>
-<p class="p2"><span class="Apple-converted-space">    </span>}</p>
-<p class="p2">}</p>
-<p class="p2">```</p>
-<p class="p3"><br></p>
-<p class="p2">### **19. `listener/JobCompletionListener.java`**</p>
-<p class="p3"><br></p>
-<p class="p2">```java</p>
-<p class="p2">package com.example.batch.listener;</p>
-<p class="p3"><br></p>
-<p class="p2">import org.springframework.batch.core.JobExecution;</p>
-<p class="p2">import org.springframework.batch.core.JobExecutionListener;</p>
-<p class="p2">import org.springframework.batch.core.annotation.AfterJob;</p>
-<p class="p2">import org.springframework.batch.core.annotation.BeforeJob;</p>
-<p class="p2">import org.springframework.stereotype.Component;</p>
-<p class="p3"><br></p>
-<p class="p2">@Component</p>
-<p class="p2">public class JobCompletionListener implements JobExecutionListener {</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>@Override</p>
-<p class="p2"><span class="Apple-converted-space">    </span>@BeforeJob</p>
-<p class="p2"><span class="Apple-converted-space">    </span>public void beforeJob(JobExecution jobExecution) {</p>
-<p class="p2"><span class="Apple-converted-space">        </span>System.out.println("Starting job: " + jobExecution.getJobInstance().getJobName());</p>
-<p class="p2"><span class="Apple-converted-space">    </span>}</p>
-<p class="p3"><br></p>
-<p class="p2"><span class="Apple-converted-space">    </span>@Override</p>
-<p class="p2"><span class="Apple-converted-space">    </span>@AfterJob</p>
-<p class="p2"><span class="Apple-converted-space">    </span>public void afterJob(JobExecution jobExecution) {</p>
-<p class="p2"><span class="Apple-converted-space">        </span>System.out.println("Job completed with status: " + jobExecution.getStatus());</p>
-<p class="p2"><span class="Apple-converted-space">    </span>}</p>
-<p class="p2">}</p>
-<p class="p2">```</p>
-<p class="p3"><br></p>
-<p class="p2">### **20. `application.properties`**</p>
-<p class="p3"><br></p>
-<p class="p2">```properties</p>
-<p class="p2">spring.batch.job.enabled=false</p>
-<p class="p2">```</p>
-<p class="p3"><br></p>
-<p class="p2">This configuration should allow you to handle `TVOrder` and `ComputerOrder` types with separate jobs, but share common logic and configuration wherever possible to maximize code reuse and maintainability.</p>
-<p class="p3"><br></p>
-</body>
-</html>
+
+
+
+the complete Spring Boot project structured to handle batch processing with different job types (`Order`, `TVOrder`, `ComputerOrder`), using `JdbcCursorItemReader` with lambda functions for row mapping, and including specific `ItemWriter` implementations for each order type.
+
+### Project Structure
+
+```
+batch-processing/
+│
+├── src/
+│   ├── main/
+│   │   ├── java/
+│   │   │   ├── com/
+│   │   │   │   └── example/
+│   │   │   │       └── batch/
+│   │   │   │           ├── BatchApplication.java
+│   │   │   │           ├── config/
+│   │   │   │           │   ├── BatchConfig.java
+│   │   │   │           │   ├── ZipFileTasklet.java
+│   │   │   │           │   └── JobCompletionListener.java
+│   │   │   │           ├── entity/
+│   │   │   │           │   ├── Order.java
+│   │   │   │           │   ├── TVOrder.java
+│   │   │   │           │   └── ComputerOrder.java
+│   │   │   │           ├── processor/
+│   │   │   │           │   └── OrderProcessor.java
+│   │   │   │           ├── reader/
+│   │   │   │           │   ├── OrderReader.java
+│   │   │   │           │   ├── TVOrderReader.java
+│   │   │   │           │   └── ComputerOrderReader.java
+│   │   │   │           └── writer/
+│   │   │   │               ├── OrderItemWriter.java
+│   │   │   │               ├── TVOrderItemWriter.java
+│   │   │   │               └── ComputerOrderItemWriter.java
+│   │   └── resources/
+│   │       └── application.properties
+└── pom.xml
+```
+
+### 1. **`BatchApplication.java`**
+
+```java
+package com.example.batch;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class BatchApplication {
+    public static void main(String[] args) {
+        SpringApplication.run(BatchApplication.class, args);
+    }
+}
+```
+
+### 2. **`BatchConfig.java`**
+
+```java
+package com.example.batch.config;
+
+import com.example.batch.entity.ComputerOrder;
+import com.example.batch.entity.Order;
+import com.example.batch.entity.TVOrder;
+import com.example.batch.processor.OrderProcessor;
+import com.example.batch.writer.ComputerOrderItemWriter;
+import com.example.batch.writer.OrderItemWriter;
+import com.example.batch.writer.TVOrderItemWriter;
+import com.example.batch.reader.ComputerOrderReader;
+import com.example.batch.reader.OrderReader;
+import com.example.batch.reader.TVOrderReader;
+import org.springframework.batch.core.Job;
+import org.springframework.batch.core.Step;
+import org.springframework.batch.core.configuration.annotation.EnableBatchProcessing;
+import org.springframework.batch.core.configuration.annotation.JobBuilderFactory;
+import org.springframework.batch.core.configuration.annotation.StepBuilderFactory;
+import org.springframework.batch.core.listener.JobExecutionListenerSupport;
+import org.springframework.batch.core.step.tasklet.Tasklet;
+import org.springframework.batch.core.step.tasklet.TaskletStep;
+import org.springframework.batch.item.ItemProcessor;
+import org.springframework.batch.item.ItemReader;
+import org.springframework.batch.item.ItemWriter;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.core.io.FileSystemResource;
+
+import javax.sql.DataSource;
+
+@Configuration
+@EnableBatchProcessing
+public class BatchConfig {
+
+    @Autowired
+    private JobBuilderFactory jobBuilderFactory;
+
+    @Autowired
+    private StepBuilderFactory stepBuilderFactory;
+
+    @Autowired
+    private DataSource dataSource;
+
+    @Autowired
+    private OrderItemWriter orderItemWriter;
+
+    @Autowired
+    private TVOrderItemWriter tvOrderItemWriter;
+
+    @Autowired
+    private ComputerOrderItemWriter computerOrderItemWriter;
+
+    @Autowired
+    private JobCompletionListener jobCompletionListener;
+
+    @Autowired
+    private ZipFileTasklet zipFileTasklet;
+
+    @Bean
+    public Job orderJob() {
+        return jobBuilderFactory.get("orderJob")
+                .listener(jobCompletionListener)
+                .start(processOrderStep())
+                .next(zipStep())
+                .build();
+    }
+
+    @Bean
+    public Job tvOrderJob() {
+        return jobBuilderFactory.get("tvOrderJob")
+                .listener(jobCompletionListener)
+                .start(processTVOrderStep())
+                .next(zipStep())
+                .build();
+    }
+
+    @Bean
+    public Job computerOrderJob() {
+        return jobBuilderFactory.get("computerOrderJob")
+                .listener(jobCompletionListener)
+                .start(processComputerOrderStep())
+                .next(zipStep())
+                .build();
+    }
+
+    @Bean
+    public Step processOrderStep() {
+        return stepBuilderFactory.get("processOrderStep")
+                .<Order, Order>chunk(10)
+                .reader(orderReader())
+                .processor(orderProcessor())
+                .writer(orderItemWriter)
+                .build();
+    }
+
+    @Bean
+    public Step processTVOrderStep() {
+        return stepBuilderFactory.get("processTVOrderStep")
+                .<TVOrder, TVOrder>chunk(10)
+                .reader(tvOrderReader())
+                .processor(orderProcessor())
+                .writer(tvOrderItemWriter)
+                .build();
+    }
+
+    @Bean
+    public Step processComputerOrderStep() {
+        return stepBuilderFactory.get("processComputerOrderStep")
+                .<ComputerOrder, ComputerOrder>chunk(10)
+                .reader(computerOrderReader())
+                .processor(orderProcessor())
+                .writer(computerOrderItemWriter)
+                .build();
+    }
+
+    @Bean
+    public Step zipStep() {
+        return stepBuilderFactory.get("zipStep")
+                .tasklet(zipFileTasklet)
+                .build();
+    }
+
+    @Bean
+    public ItemReader<Order> orderReader(@Value("#{jobParameters['orderDate']}") String orderDate) {
+        return new OrderReader(dataSource, orderDate);
+    }
+
+    @Bean
+    public ItemReader<TVOrder> tvOrderReader(@Value("#{jobParameters['orderDate']}") String orderDate) {
+        return new TVOrderReader(dataSource, orderDate);
+    }
+
+    @Bean
+    public ItemReader<ComputerOrder> computerOrderReader(@Value("#{jobParameters['orderDate']}") String orderDate) {
+        return new ComputerOrderReader(dataSource, orderDate);
+    }
+
+    @Bean
+    public ItemProcessor<Order, Order> orderProcessor() {
+        return new OrderProcessor();
+    }
+}
+```
+
+### 3. **`Order.java`**
+
+```java
+package com.example.batch.entity;
+
+import java.time.LocalDate;
+
+public class Order {
+    private int orderId;
+    private String customerName;
+    private LocalDate orderDate;
+    private double totalAmount;
+
+    // Getters and Setters
+}
+```
+
+### 4. **`TVOrder.java`**
+
+```java
+package com.example.batch.entity;
+
+public class TVOrder extends Order {
+    // Additional fields or methods specific to TVOrder if needed
+}
+```
+
+### 5. **`ComputerOrder.java`**
+
+```java
+package com.example.batch.entity;
+
+public class ComputerOrder extends Order {
+    // Additional fields or methods specific to ComputerOrder if needed
+}
+```
+
+### 6. **`OrderProcessor.java`**
+
+```java
+package com.example.batch.processor;
+
+import com.example.batch.entity.Order;
+import org.springframework.batch.item.ItemProcessor;
+import org.springframework.stereotype.Component;
+
+@Component
+public class OrderProcessor implements ItemProcessor<Order, Order> {
+
+    @Override
+    public Order process(Order item) {
+        // Implement your processing logic here
+        return item;
+    }
+}
+```
+
+### 7. **`OrderReader.java`**
+
+```java
+package com.example.batch.reader;
+
+import com.example.batch.entity.Order;
+import org.springframework.batch.item.database.JdbcCursorItemReader;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+
+import javax.sql.DataSource;
+
+@Component
+public class OrderReader extends JdbcCursorItemReader<Order> {
+
+    public OrderReader(DataSource dataSource, @Value("#{jobParameters['orderDate']}") String orderDate) {
+        setDataSource(dataSource);
+        setSql("SELECT order_id, customer_name, order_date, total_amount FROM orders WHERE order_date = ?");
+        setPreparedStatementSetter(ps -> ps.setString(1, orderDate));
+        setRowMapper((rs, rowNum) -> {
+            Order order = new Order();
+            order.setOrderId(rs.getInt("order_id"));
+            order.setCustomerName(rs.getString("customer_name"));
+            order.setOrderDate(rs.getDate("order_date").toLocalDate());
+            order.setTotalAmount(rs.getDouble("total_amount"));
+            return order;
+        });
+    }
+}
+```
+
+### 8. **`TVOrderReader.java`**
+
+```java
+package com.example.batch.reader;
+
+import com.example.batch.entity.TVOrder;
+import org.springframework.batch.item.database.JdbcCursorItemReader;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+
+import javax.sql.DataSource;
+
+@Component
+public class TVOrderReader extends JdbcCursorItemReader<TVOrder> {
+
+    public TVOrderReader(DataSource dataSource, @Value("#{jobParameters['orderDate']}") String orderDate) {
+        setDataSource(dataSource);
+        setSql("SELECT order_id, customer_name, order_date, total_amount FROM tv_orders WHERE order_date = ?");
+        setPreparedStatementSetter(ps -> ps.setString(1, orderDate));
+        setRowMapper((
+
+rs, rowNum) -> {
+            TVOrder tvOrder = new TVOrder();
+            tvOrder.setOrderId(rs.getInt("order_id"));
+            tvOrder.setCustomerName(rs.getString("customer_name"));
+            tvOrder.setOrderDate(rs.getDate("order_date").toLocalDate());
+            tvOrder.setTotalAmount(rs.getDouble("total_amount"));
+            return tvOrder;
+        });
+    }
+}
+```
+
+### 9. **`ComputerOrderReader.java`**
+
+```java
+package com.example.batch.reader;
+
+import com.example.batch.entity.ComputerOrder;
+import org.springframework.batch.item.database.JdbcCursorItemReader;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+
+import javax.sql.DataSource;
+
+@Component
+public class ComputerOrderReader extends JdbcCursorItemReader<ComputerOrder> {
+
+    public ComputerOrderReader(DataSource dataSource, @Value("#{jobParameters['orderDate']}") String orderDate) {
+        setDataSource(dataSource);
+        setSql("SELECT order_id, customer_name, order_date, total_amount FROM computer_orders WHERE order_date = ?");
+        setPreparedStatementSetter(ps -> ps.setString(1, orderDate));
+        setRowMapper((rs, rowNum) -> {
+            ComputerOrder computerOrder = new ComputerOrder();
+            computerOrder.setOrderId(rs.getInt("order_id"));
+            computerOrder.setCustomerName(rs.getString("customer_name"));
+            computerOrder.setOrderDate(rs.getDate("order_date").toLocalDate());
+            computerOrder.setTotalAmount(rs.getDouble("total_amount"));
+            return computerOrder;
+        });
+    }
+}
+```
+
+### 10. **`OrderItemWriter.java`**
+
+```java
+package com.example.batch.writer;
+
+import com.example.batch.entity.Order;
+import org.springframework.batch.item.file.FlatFileItemWriter;
+import org.springframework.batch.item.file.transform.LineAggregator;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.stereotype.Component;
+
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
+
+@Component
+public class OrderItemWriter extends FlatFileItemWriter<Order> {
+
+    private double totalAmount = 0.0;
+    private int totalCount = 0;
+    private final String outputFileName;
+
+    public OrderItemWriter(@Value("#{jobParameters['orderDate']}") String orderDate) {
+        this.outputFileName = "order-" + LocalDate.now().format(DateTimeFormatter.ISO_DATE) + ".csv";
+        setResource(new FileSystemResource(outputFileName));
+        setLineAggregator((LineAggregator<Order>) order -> String.format("%d,%s,%s,%.2f",
+            order.getOrderId(),
+            order.getCustomerName(),
+            order.getOrderDate(),
+            order.getTotalAmount()));
+        setHeaderCallback(writer -> writer.write("Order ID,Customer Name,Order Date,Total Amount"));
+        setFooterCallback(writer -> {
+            writer.write("Total Records: " + totalCount + "\n");
+            writer.write("Total Amount: " + totalAmount + "\n");
+        });
+    }
+
+    @Override
+    public void write(List<? extends Order> items) {
+        for (Order item : items) {
+            totalAmount += item.getTotalAmount();
+            totalCount++;
+        }
+        super.write(items);
+    }
+}
+```
+
+### 11. **`TVOrderItemWriter.java`**
+
+```java
+package com.example.batch.writer;
+
+import com.example.batch.entity.TVOrder;
+import org.springframework.batch.item.file.FlatFileItemWriter;
+import org.springframework.batch.item.file.transform.LineAggregator;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.stereotype.Component;
+
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
+
+@Component
+public class TVOrderItemWriter extends FlatFileItemWriter<TVOrder> {
+
+    private double totalAmount = 0.0;
+    private int totalCount = 0;
+    private final String outputFileName;
+
+    public TVOrderItemWriter(@Value("#{jobParameters['orderDate']}") String orderDate) {
+        this.outputFileName = "tvorder-" + LocalDate.now().format(DateTimeFormatter.ISO_DATE) + ".csv";
+        setResource(new FileSystemResource(outputFileName));
+        setLineAggregator((LineAggregator<TVOrder>) tvOrder -> String.format("%d,%s,%s,%.2f",
+            tvOrder.getOrderId(),
+            tvOrder.getCustomerName(),
+            tvOrder.getOrderDate(),
+            tvOrder.getTotalAmount()));
+        setHeaderCallback(writer -> writer.write("Order ID,Customer Name,Order Date,Total Amount"));
+        setFooterCallback(writer -> {
+            writer.write("Total Records: " + totalCount + "\n");
+            writer.write("Total Amount: " + totalAmount + "\n");
+        });
+    }
+
+    @Override
+    public void write(List<? extends TVOrder> items) {
+        for (TVOrder item : items) {
+            totalAmount += item.getTotalAmount();
+            totalCount++;
+        }
+        super.write(items);
+    }
+}
+```
+
+### 12. **`ComputerOrderItemWriter.java`**
+
+```java
+package com.example.batch.writer;
+
+import com.example.batch.entity.ComputerOrder;
+import org.springframework.batch.item.file.FlatFileItemWriter;
+import org.springframework.batch.item.file.transform.LineAggregator;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.stereotype.Component;
+
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
+
+@Component
+public class ComputerOrderItemWriter extends FlatFileItemWriter<ComputerOrder> {
+
+    private double totalAmount = 0.0;
+    private int totalCount = 0;
+    private final String outputFileName;
+
+    public ComputerOrderItemWriter(@Value("#{jobParameters['orderDate']}") String orderDate) {
+        this.outputFileName = "computerorder-" + LocalDate.now().format(DateTimeFormatter.ISO_DATE) + ".csv";
+        setResource(new FileSystemResource(outputFileName));
+        setLineAggregator((LineAggregator<ComputerOrder>) computerOrder -> String.format("%d,%s,%s,%.2f",
+            computerOrder.getOrderId(),
+            computerOrder.getCustomerName(),
+            computerOrder.getOrderDate(),
+            computerOrder.getTotalAmount()));
+        setHeaderCallback(writer -> writer.write("Order ID,Customer Name,Order Date,Total Amount"));
+        setFooterCallback(writer -> {
+            writer.write("Total Records: " + totalCount + "\n");
+            writer.write("Total Amount: " + totalAmount + "\n");
+        });
+    }
+
+    @Override
+    public void write(List<? extends ComputerOrder> items) {
+        for (ComputerOrder item : items) {
+            totalAmount += item.getTotalAmount();
+            totalCount++;
+        }
+        super.write(items);
+    }
+}
+```
+
+### 13. **`ZipFileTasklet.java`**
+
+```java
+package com.example.batch.config;
+
+import org.springframework.batch.core.StepContribution;
+import org.springframework.batch.core.job.flow.support.state.TaskletStep;
+import org.springframework.batch.core.step.tasklet.Tasklet;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.stereotype.Component;
+import org.springframework.batch.repeat.RepeatStatus;
+
+import java.io.*;
+import java.nio.file.*;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
+
+@Component
+public class ZipFileTasklet implements Tasklet {
+
+    @Value("#{jobExecutionContext['outputFileName']}")
+    private String outputFileName;
+
+    @Value("#{jobExecutionContext['totalAmount']}")
+    private Double totalAmount;
+
+    @Value("#{jobExecutionContext['totalCount']}")
+    private Integer totalCount;
+
+    @Override
+    public RepeatStatus execute(StepContribution contribution, ChunkContext chunkContext) throws Exception {
+        Path filePath = Paths.get(outputFileName);
+        Path zipPath = Paths.get(filePath.toString().replace(".csv", ".zip"));
+        Path tagFilePath = Paths.get(filePath.toString().replace(".csv", "-tag.txt"));
+
+        try (ZipOutputStream zos = new ZipOutputStream(new FileOutputStream(zipPath.toFile()));
+             BufferedWriter tagFileWriter = Files.newBufferedWriter(tagFilePath, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)) {
+
+            // Add the CSV file to the ZIP file
+            try (FileInputStream fis = new FileInputStream(filePath.toFile())) {
+                ZipEntry zipEntry = new ZipEntry(filePath.getFileName().toString());
+                zos.putNextEntry(zipEntry);
+                byte[] buffer = new byte[1024];
+                int length;
+                while ((length = fis.read(buffer)) > 0) {
+                    zos.write(buffer, 0, length);
+                }
+                zos.closeEntry();
+            }
+
+            // Create the tag file
+            tagFileWriter.write("Total Records: " + totalCount + "\n");
+            tagFileWriter.write("Total Amount: " + totalAmount + "\n");
+        }
+
+        return RepeatStatus.FINISHED;
+    }
+}
+```
+
+### 14. **`JobCompletionListener.java`**
+
+```java
+package com.example.batch.listener;
+
+import com.example.batch.writer.OrderItemWriter;
+import com.example.batch.writer.TVOrderItemWriter;
+import com.example.batch.writer.ComputerOrderItemWriter;
+import org.springframework.batch.core.JobExecution;
+import org.springframework.batch.core.JobExecutionListener;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
+
+@Component
+public class JobCompletionListener implements JobExecutionListener {
+
+    @Autowired
+    private OrderItemWriter orderItemWriter;
+
+    @Autowired
+    private TVOrderItemWriter tvOrderItemWriter;
+
+    @Autowired
+    private ComputerOrderItemWriter computerOrderItemWriter;
+
+    @Override
+    public void beforeJob(JobExecution jobExecution) {
+        // No action needed before job starts
+    }
+
+    @Override
+    public void afterJob(JobExecution jobExecution) {
+        String jobName = jobExecution.getJobInstance().getJobName();
+        if (jobName.equals("orderJob")) {
+            jobExecution.getExecutionContext().put("outputFileName", orderItemWriter.getOutputFileName());
+            jobExecution.getExecutionContext().put("totalAmount", orderItemWriter.getTotalAmount());
+            jobExecution.getExecutionContext().put("totalCount", orderItemWriter.getTotalCount());
+        } else if (jobName.equals("tvOrderJob")) {
+            jobExecution.getExecutionContext().put("outputFileName", tvOrderItemWriter.getOutputFileName());
+            jobExecution.getExecutionContext().put("totalAmount", tvOrderItemWriter.getTotalAmount());
+            jobExecution.getExecutionContext().put("totalCount", tvOrderItemWriter.getTotalCount());
+        } else if (jobName.equals("computerOrderJob")) {
+            jobExecution.getExecutionContext().put("outputFileName", computerOrderItemWriter.getOutputFileName());
+            jobExecution.getExecutionContext().put("totalAmount", computerOrderItemWriter.getTotalAmount());
+            jobExecution.getExecutionContext().put("totalCount", computerOrderItemWriter.getTotalCount());
+        }
+        System.out.println("Job execution completed: " + jobName);
+    }
+}
+
+```
+
+### 15. **`application.properties`**
+
+```properties
+spring.datasource.url=jdbc:h2:mem:testdb
+spring.datasource.driver-class-name=org.h2.Driver
+spring.datasource.username=sa
+spring.datasource.password=password
+spring.batch.job.enabled=false
+
+
+```
+
+### **Explanation**
+
+- **Data Entities**: `Order`, `TVOrder`, and `ComputerOrder` represent the different types of orders.
+- **Readers**: `OrderReader`, `TVOrderReader`, and `ComputerOrderReader` use `JdbcCursorItemReader` to read data from the database. Row mapping is done using lambda functions.
+- **Processors**: `OrderProcessor` handles processing logic for all order types.
+- **Writers**: `OrderItemWriter`, `TVOrderItemWriter`, and `ComputerOrderItemWriter` write data to CSV files, with specific implementations for each order type.
+- **Jobs**: Configured for `Order`, `TVOrder`, and `ComputerOrder`, using the same processing and writing steps but with different readers and writers.
+- **Tasklets**: `ZipFileTasklet` creates a ZIP file of the output CSV and a tag file.
+- **Listeners**: `JobCompletionListener` logs the job completion.
+
+This configuration ensures that each job type (Order, TVOrder, ComputerOrder) has its own job configuration but shares common processing logic, making the codebase clean and reusable.
+
+
+
+
+ere is the complete project structure, including all Java classes necessary to handle `TVOrder` and `ComputerOrder` with separate jobs but leveraging code reuse and abstraction.
+
+### **Project Structure**
+
+```
+src
+└── main
+    └── java
+        └── com
+            └── example
+                └── batch
+                    ├── BatchApplication.java
+                    ├── config
+                    │   ├── AbstractOrderJobConfig.java
+                    │   ├── TVOrderJobConfig.java
+                    │   ├── ComputerOrderJobConfig.java
+                    │   └── ZipFileTasklet.java
+                    ├── entity
+                    │   ├── Order.java
+                    │   ├── TVOrder.java
+                    │   └── ComputerOrder.java
+                    ├── listener
+                    │   └── JobCompletionListener.java
+                    ├── mapper
+                    │   ├── OrderRowMapper.java
+                    │   ├── TVOrderRowMapper.java
+                    │   └── ComputerOrderRowMapper.java
+                    ├── processor
+                    │   └── OrderProcessor.java
+                    ├── reader
+                    │   ├── OrderReader.java
+                    │   ├── TVOrderReader.java
+                    │   └── ComputerOrderReader.java
+                    └── writer
+                        ├── OrderItemWriter.java
+                        ├── TVOrderItemWriter.java
+                        └── ComputerOrderItemWriter.java
+```
+
+### **1. `BatchApplication.java`**
+
+```java
+package com.example.batch;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class BatchApplication {
+    public static void main(String[] args) {
+        SpringApplication.run(BatchApplication.class, args);
+    }
+}
+```
+
+### **2. `config/AbstractOrderJobConfig.java**
+
+```java
+package com.example.batch.config;
+
+import com.example.batch.processor.OrderProcessor;
+import org.springframework.batch.core.Job;
+import org.springframework.batch.core.Step;
+import org.springframework.batch.core.configuration.annotation.JobBuilderFactory;
+import org.springframework.batch.core.configuration.annotation.StepBuilderFactory;
+import org.springframework.batch.core.step.tasklet.Tasklet;
+import org.springframework.batch.item.ItemProcessor;
+import org.springframework.batch.item.ItemReader;
+import org.springframework.batch.item.ItemWriter;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+public abstract class AbstractOrderJobConfig<T> {
+
+    @Autowired
+    protected JobBuilderFactory jobBuilderFactory;
+
+    @Autowired
+    protected StepBuilderFactory stepBuilderFactory;
+
+    @Bean
+    public abstract Job orderJob(Step processStep, Step zipStep);
+
+    @Bean
+    public abstract Step processStep();
+
+    @Bean
+    public abstract Step zipStep();
+
+    protected Step processStep(ItemReader<T> reader, ItemProcessor<T, T> processor, ItemWriter<T> writer) {
+        return stepBuilderFactory.get(getProcessStepName())
+                .<T, T>chunk(10)
+                .reader(reader)
+                .processor(processor)
+                .writer(writer)
+                .build();
+    }
+
+    protected Step zipStep() {
+        return stepBuilderFactory.get(getZipStepName())
+                .tasklet(new ZipFileTasklet())
+                .build();
+    }
+
+    protected abstract String getJobName();
+    protected abstract String getProcessStepName();
+    protected abstract String getZipStepName();
+    protected abstract ItemReader<T> getOrderReader();
+    protected abstract ItemWriter<T> getItemWriter();
+}
+```
+
+### **3. `config/TVOrderJobConfig.java`**
+
+```java
+package com.example.batch.config;
+
+import com.example.batch.entity.TVOrder;
+import com.example.batch.writer.TVOrderItemWriter;
+import org.springframework.batch.core.Job;
+import org.springframework.batch.core.Step;
+import org.springframework.batch.core.configuration.annotation.EnableBatchProcessing;
+import org.springframework.batch.core.configuration.annotation.JobBuilderFactory;
+import org.springframework.batch.core.configuration.annotation.StepBuilderFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+@EnableBatchProcessing
+public class TVOrderJobConfig extends AbstractOrderJobConfig<TVOrder> {
+
+    @Autowired
+    private TVOrderReader tvOrderReader;
+
+    @Autowired
+    private TVOrderItemWriter tvOrderItemWriter;
+
+    @Bean
+    @Override
+    public Job orderJob(Step processStep, Step zipStep) {
+        return jobBuilderFactory.get(getJobName())
+                .start(processStep)
+                .next(zipStep)
+                .build();
+    }
+
+    @Bean
+    @Override
+    public Step processStep() {
+        return super.processStep(tvOrderReader, new OrderProcessor(), tvOrderItemWriter);
+    }
+
+    @Bean
+    @Override
+    public Step zipStep() {
+        return super.zipStep();
+    }
+
+    @Override
+    protected String getJobName() {
+        return "tvOrderJob";
+    }
+
+    @Override
+    protected String getProcessStepName() {
+        return "tvOrderProcessStep";
+    }
+
+    @Override
+    protected String getZipStepName() {
+        return "tvOrderZipStep";
+    }
+
+    @Override
+    protected TVOrderReader getOrderReader() {
+        return tvOrderReader;
+    }
+
+    @Override
+    protected TVOrderItemWriter getItemWriter() {
+        return tvOrderItemWriter;
+    }
+}
+```
+
+### **4. `config/ComputerOrderJobConfig.java`**
+
+```java
+package com.example.batch.config;
+
+import com.example.batch.entity.ComputerOrder;
+import com.example.batch.writer.ComputerOrderItemWriter;
+import org.springframework.batch.core.Job;
+import org.springframework.batch.core.Step;
+import org.springframework.batch.core.configuration.annotation.EnableBatchProcessing;
+import org.springframework.batch.core.configuration.annotation.JobBuilderFactory;
+import org.springframework.batch.core.configuration.annotation.StepBuilderFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+@EnableBatchProcessing
+public class ComputerOrderJobConfig extends AbstractOrderJobConfig<ComputerOrder> {
+
+    @Autowired
+    private ComputerOrderReader computerOrderReader;
+
+    @Autowired
+    private ComputerOrderItemWriter computerOrderItemWriter;
+
+    @Bean
+    @Override
+    public Job orderJob(Step processStep, Step zipStep) {
+        return jobBuilderFactory.get(getJobName())
+                .start(processStep)
+                .next(zipStep)
+                .build();
+    }
+
+    @Bean
+    @Override
+    public Step processStep() {
+        return super.processStep(computerOrderReader, new OrderProcessor(), computerOrderItemWriter);
+    }
+
+    @Bean
+    @Override
+    public Step zipStep() {
+        return super.zipStep();
+    }
+
+    @Override
+    protected String getJobName() {
+        return "computerOrderJob";
+    }
+
+    @Override
+    protected String getProcessStepName() {
+        return "computerOrderProcessStep";
+    }
+
+    @Override
+    protected String getZipStepName() {
+        return "computerOrderZipStep";
+    }
+
+    @Override
+    protected ComputerOrderReader getOrderReader() {
+        return computerOrderReader;
+    }
+
+    @Override
+    protected ComputerOrderItemWriter getItemWriter() {
+        return computerOrderItemWriter;
+    }
+}
+```
+
+### **5. `config/ZipFileTasklet.java`**
+
+```java
+package com.example.batch.config;
+
+import org.springframework.batch.core.StepContribution;
+import org.springframework.batch.core.job.flow.support.state.TaskletStep;
+import org.springframework.batch.core.step.tasklet.Tasklet;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.stereotype.Component;
+import org.springframework.batch.repeat.RepeatStatus;
+
+import java.io.*;
+import java.nio.file.*;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
+
+@Component
+public class ZipFileTasklet implements Tasklet {
+
+    @Value("#{jobExecutionContext['outputFileName']}")
+    private String outputFileName;
+
+    @Value("#{jobExecutionContext['totalAmount']}")
+    private Double totalAmount;
+
+    @Value("#{jobExecutionContext['totalCount']}")
+    private Integer totalCount;
+
+    @Override
+    public RepeatStatus execute(StepContribution contribution, ChunkContext chunkContext) throws Exception {
+        Path filePath = Paths.get(outputFileName);
+        Path zipPath = Paths.get(filePath.toString().replace(".csv", ".zip"));
+        Path tagFilePath = Paths.get(filePath.toString().replace(".csv", "-tag.txt"));
+
+        try (ZipOutputStream zos = new ZipOutputStream(new FileOutputStream(zipPath.toFile()));
+             BufferedWriter tagFileWriter = Files.newBufferedWriter(tagFilePath, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)) {
+
+            // Add the CSV file to the ZIP file
+            try (FileInputStream fis = new FileInputStream(filePath.toFile())) {
+                ZipEntry zipEntry = new ZipEntry(filePath.getFileName().toString());
+                zos.putNextEntry(zipEntry);
+                byte[] buffer = new byte[1024];
+                int length;
+                while ((length = fis.read(buffer)) > 0) {
+                    zos.write(buffer, 0, length);
+                }
+                zos.closeEntry();
+            }
+
+            // Create the tag file
+            tagFileWriter.write("Total Records: " + totalCount + "\n");
+            tagFileWriter.write("Total Amount: " + totalAmount + "\n");
+        }
+
+        return RepeatStatus.FINISHED;
+    }
+}
+```
+
+### **6. `entity/Order.java`**
+
+```java
+package com.example.batch.entity;
+
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.time.LocalDate;
+
+@Data
+@NoArgsConstructor
+public class Order {
+    private int orderId;
+    private String customerName;
+    private LocalDate orderDate;
+    private
+
+ double amount;
+}
+```
+
+### **7. `entity/TVOrder.java`**
+
+```java
+package com.example.batch.entity;
+
+public class TVOrder extends Order {
+    private String tvModel;
+
+    // Getters and setters
+}
+```
+
+### **8. `entity/ComputerOrder.java`**
+
+```java
+package com.example.batch.entity;
+
+public class ComputerOrder extends Order {
+    private String computerModel;
+
+    // Getters and setters
+}
+```
+
+### **9. `mapper/OrderRowMapper.java`**
+
+```java
+package com.example.batch.mapper;
+
+import com.example.batch.entity.Order;
+import org.springframework.jdbc.core.RowMapper;
+
+import java.sql.ResultSet;
+import java.sql.SQLException;
+
+public abstract class OrderRowMapper<T extends Order> implements RowMapper<T> {
+
+    @Override
+    public T mapRow(ResultSet rs, int rowNum) throws SQLException {
+        T order = createOrder();
+        order.setOrderId(rs.getInt("order_id"));
+        order.setCustomerName(rs.getString("customer_name"));
+        order.setOrderDate(rs.getDate("order_date").toLocalDate());
+        order.setAmount(rs.getDouble("amount"));
+        mapAdditionalFields(rs, order);
+        return order;
+    }
+
+    protected abstract T createOrder();
+    protected abstract void mapAdditionalFields(ResultSet rs, T order) throws SQLException;
+}
+```
+
+### **10. `mapper/TVOrderRowMapper.java`**
+
+```java
+package com.example.batch.mapper;
+
+import com.example.batch.entity.TVOrder;
+import org.springframework.stereotype.Component;
+
+import java.sql.ResultSet;
+import java.sql.SQLException;
+
+@Component
+public class TVOrderRowMapper extends OrderRowMapper<TVOrder> {
+
+    @Override
+    protected TVOrder createOrder() {
+        return new TVOrder();
+    }
+
+    @Override
+    protected void mapAdditionalFields(ResultSet rs, TVOrder order) throws SQLException {
+        order.setTvModel(rs.getString("tv_model"));
+    }
+}
+```
+
+### **11. `mapper/ComputerOrderRowMapper.java`**
+
+```java
+package com.example.batch.mapper;
+
+import com.example.batch.entity.ComputerOrder;
+import org.springframework.stereotype.Component;
+
+import java.sql.ResultSet;
+import java.sql.SQLException;
+
+@Component
+public class ComputerOrderRowMapper extends OrderRowMapper<ComputerOrder> {
+
+    @Override
+    protected ComputerOrder createOrder() {
+        return new ComputerOrder();
+    }
+
+    @Override
+    protected void mapAdditionalFields(ResultSet rs, ComputerOrder order) throws SQLException {
+        order.setComputerModel(rs.getString("computer_model"));
+    }
+}
+```
+
+### **12. `processor/OrderProcessor.java`**
+
+```java
+package com.example.batch.processor;
+
+import com.example.batch.entity.Order;
+import org.springframework.batch.item.ItemProcessor;
+import org.springframework.stereotype.Component;
+
+@Component
+public class OrderProcessor implements ItemProcessor<Order, Order> {
+
+    @Override
+    public Order process(Order order) throws Exception {
+        // Add custom processing logic if needed
+        return order;
+    }
+}
+```
+
+### **13. `reader/OrderReader.java`**
+
+```java
+package com.example.batch.reader;
+
+import com.example.batch.entity.Order;
+import com.example.batch.mapper.OrderRowMapper;
+import org.springframework.batch.item.database.JdbcCursorItemReader;
+import org.springframework.stereotype.Component;
+
+@Component
+public abstract class OrderReader<T extends Order> extends JdbcCursorItemReader<T> {
+
+    public OrderReader(String sql, OrderRowMapper<T> rowMapper) {
+        super();
+        setSql(sql);
+        setRowMapper(rowMapper);
+        setFetchSize(10);
+    }
+}
+```
+
+### **14. `reader/TVOrderReader.java`**
+
+```java
+package com.example.batch.reader;
+
+import com.example.batch.entity.TVOrder;
+import com.example.batch.mapper.TVOrderRowMapper;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
+
+@Component
+public class TVOrderReader extends OrderReader<TVOrder> {
+
+    @Autowired
+    public TVOrderReader(TVOrderRowMapper rowMapper) {
+        super("SELECT * FROM tv_orders", rowMapper);
+    }
+}
+```
+
+### **15. `reader/ComputerOrderReader.java`**
+
+```java
+package com.example.batch.reader;
+
+import com.example.batch.entity.ComputerOrder;
+import com.example.batch.mapper.ComputerOrderRowMapper;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
+
+@Component
+public class ComputerOrderReader extends OrderReader<ComputerOrder> {
+
+    @Autowired
+    public ComputerOrderReader(ComputerOrderRowMapper rowMapper) {
+        super("SELECT * FROM computer_orders", rowMapper);
+    }
+}
+```
+
+### **16. `writer/OrderItemWriter.java`**
+
+```java
+package com.example.batch.writer;
+
+import com.example.batch.entity.Order;
+import org.springframework.batch.item.ItemWriter;
+import org.springframework.stereotype.Component;
+
+import java.util.List;
+
+@Component
+public abstract class OrderItemWriter<T extends Order> implements ItemWriter<T> {
+
+    @Override
+    public void write(List<? extends T> items) throws Exception {
+        // Default implementation can be overridden in specific writers
+        for (T item : items) {
+            writeItem(item);
+        }
+    }
+
+    protected abstract void writeItem(T item) throws Exception;
+}
+```
+
+### **17. `writer/TVOrderItemWriter.java`**
+
+```java
+package com.example.batch.writer;
+
+import com.example.batch.entity.TVOrder;
+import org.springframework.stereotype.Component;
+
+@Component
+public class TVOrderItemWriter extends OrderItemWriter<TVOrder> {
+
+    @Override
+    protected void writeItem(TVOrder item) throws Exception {
+        // Implementation for writing TVOrder
+        System.out.println("Writing TV Order: " + item);
+    }
+}
+```
+
+### **18. `writer/ComputerOrderItemWriter.java`**
+
+```java
+package com.example.batch.writer;
+
+import com.example.batch.entity.ComputerOrder;
+import org.springframework.stereotype.Component;
+
+@Component
+public class ComputerOrderItemWriter extends OrderItemWriter<ComputerOrder> {
+
+    @Override
+    protected void writeItem(ComputerOrder item) throws Exception {
+        // Implementation for writing ComputerOrder
+        System.out.println("Writing Computer Order: " + item);
+    }
+}
+```
+
+### **19. `listener/JobCompletionListener.java`**
+
+```java
+package com.example.batch.listener;
+
+import org.springframework.batch.core.JobExecution;
+import org.springframework.batch.core.JobExecutionListener;
+import org.springframework.batch.core.annotation.AfterJob;
+import org.springframework.batch.core.annotation.BeforeJob;
+import org.springframework.stereotype.Component;
+
+@Component
+public class JobCompletionListener implements JobExecutionListener {
+
+    @Override
+    @BeforeJob
+    public void beforeJob(JobExecution jobExecution) {
+        System.out.println("Starting job: " + jobExecution.getJobInstance().getJobName());
+    }
+
+    @Override
+    @AfterJob
+    public void afterJob(JobExecution jobExecution) {
+        System.out.println("Job completed with status: " + jobExecution.getStatus());
+    }
+}
+```
+
+### **20. `application.properties`**
+
+```properties
+spring.batch.job.enabled=false
+```
+
+This configuration should allow you to handle `TVOrder` and `ComputerOrder` types with separate jobs, but share common logic and configuration wherever possible to maximize code reuse and maintainability.
+
