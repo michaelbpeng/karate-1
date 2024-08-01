@@ -1287,3 +1287,765 @@ This configuration should allow you to handle `TVOrder` and `ComputerOrder` type
                 .taskExecutor(taskExecutor())
                 .build();
     }
+
+
+
+
+
+-------------------- job executor --------------------------                    
+                    Sure, here's a complete project structure for a Spring Batch application that processes TV and Computer orders. The project includes separate jobs and writers for TV and Computer orders, integration tests, and configurations.
+
+### **1. Project Structure**
+
+```
+src/
+├── main/
+│   ├── java/
+│   │   └── com/
+│   │       └── example/
+│   │           └── batch/
+│   │               ├── config/
+│   │               │   ├── BatchConfig.java
+│   │               │   ├── DataSourceConfig.java
+│   │               │   └── JobConfig.java
+│   │               ├── entity/
+│   │               │   ├── ComputerOrder.java
+│   │               │   ├── Order.java
+│   │               │   └── TVOrder.java
+│   │               ├── job/
+│   │               │   ├── ComputerOrderJob.java
+│   │               │   ├── TVOrderJob.java
+│   │               │   ├── ComputerOrderWriter.java
+│   │               │   ├── TVOrderWriter.java
+│   │               │   ├── ComputerOrderReader.java
+│   │               │   ├── TVOrderReader.java
+│   │               │   ├── ComputerOrderProcessor.java
+│   │               │   └── TVOrderProcessor.java
+│   │               ├── listener/
+│   │               │   ├── ItemReadListener.java
+│   │               │   └── JobCompletionNotificationListener.java
+│   │               └── tasklet/
+│   │                   └── CustomTasklet.java
+│   ├── resources/
+│   │   ├── application.properties
+│   │   ├── application-test.properties
+│   │   ├── schema.sql
+│   │   ├── data.sql
+│   │   └── logback.xml
+│   └── test/
+│       ├── java/
+│       │   └── com/
+│       │       └── example/
+│       │           └── batch/
+│       │               ├── JobIntegrationTest.java
+│       │               ├── TVOrderJobIntegrationTest.java
+│       │               └── ComputerOrderJobIntegrationTest.java
+│       └── resources/
+│           ├── application-test.properties
+│           └── schema.sql
+```
+
+### **2. Code Files**
+
+#### **BatchConfig.java**
+
+```java
+package com.example.batch.config;
+
+import org.springframework.batch.core.configuration.annotation.EnableBatchProcessing;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+@EnableBatchProcessing
+public class BatchConfig {
+    // Define batch-related beans if needed
+}
+```
+
+#### **DataSourceConfig.java**
+
+```java
+package com.example.batch.config;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.jdbc.datasource.DriverManagerDataSource;
+
+import javax.sql.DataSource;
+
+@Configuration
+public class DataSourceConfig {
+
+    @Bean
+    public DataSource dataSource() {
+        DriverManagerDataSource dataSource = new DriverManagerDataSource();
+        dataSource.setDriverClassName("org.h2.Driver");
+        dataSource.setUrl("jdbc:h2:mem:testdb");
+        dataSource.setUsername("sa");
+        dataSource.setPassword("");
+        return dataSource;
+    }
+}
+```
+
+#### **JobConfig.java**
+
+```java
+package com.example.batch.config;
+
+import com.example.batch.job.ComputerOrderJob;
+import com.example.batch.job.TVOrderJob;
+import org.springframework.batch.core.Job;
+import org.springframework.batch.core.Step;
+import org.springframework.batch.core.configuration.annotation.JobBuilderFactory;
+import org.springframework.batch.core.configuration.annotation.StepBuilderFactory;
+import org.springframework.batch.core.configuration.annotation.EnableBatchProcessing;
+import org.springframework.batch.core.launch.support.RunIdIncrementer;
+import org.springframework.batch.core.step.tasklet.TaskletStep;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.core.task.TaskExecutor;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+
+@Configuration
+@EnableBatchProcessing
+public class JobConfig {
+
+    @Bean
+    public Job computerOrderJob(JobBuilderFactory jobBuilderFactory, Step computerOrderStep) {
+        return jobBuilderFactory.get("computerOrderJob")
+            .incrementer(new RunIdIncrementer())
+            .flow(computerOrderStep)
+            .end()
+            .build();
+    }
+
+    @Bean
+    public Job tvOrderJob(JobBuilderFactory jobBuilderFactory, Step tvOrderStep) {
+        return jobBuilderFactory.get("tvOrderJob")
+            .incrementer(new RunIdIncrementer())
+            .flow(tvOrderStep)
+            .end()
+            .build();
+    }
+
+    @Bean
+    public Step computerOrderStep(StepBuilderFactory stepBuilderFactory, ComputerOrderReader reader, ComputerOrderProcessor processor, ComputerOrderWriter writer, TaskExecutor taskExecutor) {
+        return stepBuilderFactory.get("computerOrderStep")
+            .<ComputerOrder, ComputerOrder>chunk(100)
+            .reader(reader)
+            .processor(processor)
+            .writer(writer)
+            .taskExecutor(taskExecutor)
+            .build();
+    }
+
+    @Bean
+    public Step tvOrderStep(StepBuilderFactory stepBuilderFactory, TVOrderReader reader, TVOrderProcessor processor, TVOrderWriter writer, TaskExecutor taskExecutor) {
+        return stepBuilderFactory.get("tvOrderStep")
+            .<TVOrder, TVOrder>chunk(100)
+            .reader(reader)
+            .processor(processor)
+            .writer(writer)
+            .taskExecutor(taskExecutor)
+            .build();
+    }
+
+    @Bean
+    public TaskExecutor taskExecutor() {
+        ThreadPoolTaskExecutor taskExecutor = new ThreadPoolTaskExecutor();
+        taskExecutor.setCorePoolSize(5);
+        taskExecutor.setMaxPoolSize(10);
+        taskExecutor.setQueueCapacity(25);
+        taskExecutor.setThreadNamePrefix("BatchExecutor-");
+        taskExecutor.initialize();
+        return taskExecutor;
+    }
+}
+```
+
+#### **Order.java**
+
+```java
+package com.example.batch.entity;
+
+import java.time.LocalDate;
+
+public class Order {
+    private int orderId;
+    private String customerName;
+    private LocalDate orderDate;
+    private double totalAmount;
+
+    // Getters and Setters
+}
+```
+
+#### **TVOrder.java**
+
+```java
+package com.example.batch.entity;
+
+public class TVOrder extends Order {
+    private String model;
+    private String manufacturer;
+
+    // Getters and Setters
+}
+```
+
+#### **ComputerOrder.java**
+
+```java
+package com.example.batch.entity;
+
+public class ComputerOrder extends Order {
+    private String cpu;
+    private String ram;
+
+    // Getters and Setters
+}
+```
+
+#### **ComputerOrderReader.java**
+
+```java
+package com.example.batch.job;
+
+import com.example.batch.entity.ComputerOrder;
+import org.springframework.batch.item.ItemReader;
+
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.Statement;
+import javax.sql.DataSource;
+
+public class ComputerOrderReader implements ItemReader<ComputerOrder> {
+
+    private final DataSource dataSource;
+
+    public ComputerOrderReader(DataSource dataSource) {
+        this.dataSource = dataSource;
+    }
+
+    @Override
+    public ComputerOrder read() throws Exception {
+        try (Connection connection = dataSource.getConnection();
+             Statement statement = connection.createStatement();
+             ResultSet resultSet = statement.executeQuery("SELECT * FROM computer_orders")) {
+
+            if (resultSet.next()) {
+                ComputerOrder order = new ComputerOrder();
+                order.setOrderId(resultSet.getInt("order_id"));
+                order.setCustomerName(resultSet.getString("customer_name"));
+                order.setOrderDate(resultSet.getDate("order_date").toLocalDate());
+                order.setTotalAmount(resultSet.getDouble("total_amount"));
+                order.setCpu(resultSet.getString("cpu"));
+                order.setRam(resultSet.getString("ram"));
+                return order;
+            }
+        }
+        return null;
+    }
+}
+```
+
+#### **TVOrderReader.java**
+
+```java
+package com.example.batch.job;
+
+import com.example.batch.entity.TVOrder;
+import org.springframework.batch.item.ItemReader;
+
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.Statement;
+import javax.sql.DataSource;
+
+public class TVOrderReader implements ItemReader<TVOrder> {
+
+    private final DataSource dataSource;
+
+    public TVOrderReader(DataSource dataSource) {
+        this.dataSource = dataSource;
+    }
+
+    @Override
+    public TVOrder read() throws Exception {
+        try (Connection connection = dataSource.getConnection();
+             Statement statement = connection.createStatement();
+             ResultSet resultSet = statement.executeQuery("SELECT * FROM tv_orders")) {
+
+            if (resultSet.next()) {
+                TVOrder order = new TVOrder();
+                order.setOrderId(resultSet.getInt("order_id"));
+                order.setCustomerName(resultSet.getString("customer_name"));
+                order.setOrderDate(resultSet.getDate("order_date").toLocalDate());
+                order.setTotalAmount(resultSet.getDouble("total_amount"));
+                order.setModel(resultSet.getString("model"));
+                order.setManufacturer(resultSet.getString("manufacturer"));
+                return order;
+            }
+        }
+        return null;
+    }
+}
+```
+
+#### **ComputerOrderProcessor.java**
+
+```java
+package com.example.batch.job;
+
+import com.example.batch.entity.ComputerOrder;
+import org.springframework.batch.item.ItemProcessor;
+
+public class ComputerOrderProcessor implements ItemProcessor<ComputerOrder, ComputerOrder> {
+
+    @Override
+    public ComputerOrder process(ComputerOrder item) {
+        // Process the computer order if needed
+        return item;
+    }
+}
+```
+
+#### **TVOrderProcessor.java**
+
+```java
+package com.example.batch.job;
+
+import com.example.batch.entity.TVOrder;
+import org.springframework.batch.item.ItemProcessor;
+
+public class TVOrderProcessor implements ItemProcessor<TV
+
+Order, TVOrder> {
+
+    @Override
+    public TVOrder process(TVOrder item) {
+        // Process the TV order if needed
+        return item;
+    }
+}
+```
+
+#### **ComputerOrderWriter.java**
+
+```java
+package com.example.batch.job;
+
+import com.example.batch.entity.ComputerOrder;
+import org.springframework.batch.item.ItemWriter;
+
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.util.List;
+
+public class ComputerOrderWriter implements ItemWriter<ComputerOrder> {
+
+    private final String outputFile;
+
+    public ComputerOrderWriter(String outputFile) {
+        this.outputFile = outputFile;
+    }
+
+    @Override
+    public void write(List<? extends ComputerOrder> items) throws IOException {
+        try (PrintWriter writer = new PrintWriter(new FileWriter(outputFile, true))) {
+            for (ComputerOrder item : items) {
+                writer.println(item.getOrderId() + "," +
+                               item.getCustomerName() + "," +
+                               item.getOrderDate() + "," +
+                               item.getTotalAmount() + "," +
+                               item.getCpu() + "," +
+                               item.getRam());
+            }
+        }
+    }
+}
+```
+
+#### **TVOrderWriter.java**
+
+```java
+package com.example.batch.job;
+
+import com.example.batch.entity.TVOrder;
+import org.springframework.batch.item.ItemWriter;
+
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.util.List;
+
+public class TVOrderWriter implements ItemWriter<TVOrder> {
+
+    private final String outputFile;
+
+    public TVOrderWriter(String outputFile) {
+        this.outputFile = outputFile;
+    }
+
+    @Override
+    public void write(List<? extends TVOrder> items) throws IOException {
+        try (PrintWriter writer = new PrintWriter(new FileWriter(outputFile, true))) {
+            for (TVOrder item : items) {
+                writer.println(item.getOrderId() + "," +
+                               item.getCustomerName() + "," +
+                               item.getOrderDate() + "," +
+                               item.getTotalAmount() + "," +
+                               item.getModel() + "," +
+                               item.getManufacturer());
+            }
+        }
+    }
+}
+```
+
+#### **JobCompletionNotificationListener.java**
+
+```java
+package com.example.batch.listener;
+
+import org.springframework.batch.core.JobExecution;
+import org.springframework.batch.core.JobExecutionListener;
+import org.springframework.stereotype.Component;
+
+@Component
+public class JobCompletionNotificationListener implements JobExecutionListener {
+
+    @Override
+    public void beforeJob(JobExecution jobExecution) {
+        // Called before the job starts
+    }
+
+    @Override
+    public void afterJob(JobExecution jobExecution) {
+        // Called after the job ends
+    }
+}
+```
+
+#### **ItemReadListener.java**
+
+```java
+package com.example.batch.listener;
+
+import org.springframework.batch.core.ItemReadListener;
+import org.springframework.batch.item.ItemReadListener;
+import org.springframework.stereotype.Component;
+
+@Component
+public class ItemReadListener<T> implements ItemReadListener<T> {
+
+    @Override
+    public void beforeRead() {
+        // Called before reading an item
+    }
+
+    @Override
+    public void afterRead(T item) {
+        // Called after reading an item
+    }
+
+    @Override
+    public void onReadError(Exception ex) {
+        // Called when an error occurs while reading an item
+    }
+}
+```
+
+#### **ComputerOrderJob.java**
+
+```java
+package com.example.batch.job;
+
+import org.springframework.batch.core.Job;
+import org.springframework.batch.core.Step;
+import org.springframework.batch.core.configuration.annotation.JobBuilderFactory;
+import org.springframework.batch.core.configuration.annotation.StepBuilderFactory;
+import org.springframework.batch.core.configuration.annotation.JobConfigurer;
+import org.springframework.batch.core.step.tasklet.TaskletStep;
+import org.springframework.batch.core.step.tasklet.TaskletStep;
+import org.springframework.batch.core.step.tasklet.TaskletStep;
+import org.springframework.batch.core.step.tasklet.TaskletStep;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+public class ComputerOrderJob {
+
+    @Autowired
+    private JobBuilderFactory jobBuilderFactory;
+
+    @Autowired
+    private StepBuilderFactory stepBuilderFactory;
+
+    @Bean
+    public Job computerOrderJob() {
+        return jobBuilderFactory.get("computerOrderJob")
+            .start(computerOrderStep())
+            .build();
+    }
+
+    @Bean
+    public Step computerOrderStep() {
+        return stepBuilderFactory.get("computerOrderStep")
+            .<ComputerOrder, ComputerOrder>chunk(100)
+            .reader(new ComputerOrderReader())
+            .processor(new ComputerOrderProcessor())
+            .writer(new ComputerOrderWriter("computer_orders.csv"))
+            .build();
+    }
+}
+```
+
+#### **TVOrderJob.java**
+
+```java
+package com.example.batch.job;
+
+import org.springframework.batch.core.Job;
+import org.springframework.batch.core.Step;
+import org.springframework.batch.core.configuration.annotation.JobBuilderFactory;
+import org.springframework.batch.core.configuration.annotation.StepBuilderFactory;
+import org.springframework.batch.core.configuration.annotation.JobConfigurer;
+import org.springframework.batch.core.step.tasklet.TaskletStep;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+public class TVOrderJob {
+
+    @Autowired
+    private JobBuilderFactory jobBuilderFactory;
+
+    @Autowired
+    private StepBuilderFactory stepBuilderFactory;
+
+    @Bean
+    public Job tvOrderJob() {
+        return jobBuilderFactory.get("tvOrderJob")
+            .start(tvOrderStep())
+            .build();
+    }
+
+    @Bean
+    public Step tvOrderStep() {
+        return stepBuilderFactory.get("tvOrderStep")
+            .<TVOrder, TVOrder>chunk(100)
+            .reader(new TVOrderReader())
+            .processor(new TVOrderProcessor())
+            .writer(new TVOrderWriter("tv_orders.csv"))
+            .build();
+    }
+}
+```
+
+### **4. Integration Tests**
+
+#### **TVOrderJobIntegrationTest.java**
+
+```java
+package com.example.batch;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.batch.core.Job;
+import org.springframework.batch.core.JobExecution;
+import org.springframework.batch.core.JobParametersBuilder;
+import org.springframework.batch.core.launch.JobLauncher;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+
+import javax.sql.DataSource;
+import java.sql.Connection;
+import java.sql.Statement;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+@SpringBootTest
+public class TVOrderJobIntegrationTest {
+
+    @Autowired
+    private JobLauncher jobLauncher;
+
+    @Autowired
+    private Job tvOrderJob;
+
+    @Autowired
+    private DataSource dataSource;
+
+    @BeforeEach
+    public void setUp() throws Exception {
+        try (Connection connection = dataSource.getConnection();
+             Statement statement = connection.createStatement()) {
+
+            statement.execute("INSERT INTO tv_orders (order_id, customer_name, order_date, total_amount, model, manufacturer) VALUES (1, 'John Doe', '2024-07-31', 299.99, 'ModelX', 'BrandY')");
+        }
+    }
+
+    @Test
+    public void testTVOrderJob() throws Exception {
+        JobExecution jobExecution = jobLauncher.run(tvOrderJob, new JobParametersBuilder()
+            .addString("orderType", "TV")
+            .toJobParameters());
+
+        assertEquals("COMPLETED", jobExecution.getStatus().toString());
+
+        // Verify output file or database entries
+
+        try (Connection connection = dataSource.getConnection();
+             Statement statement = connection.createStatement()) {
+
+            statement.execute("DELETE FROM tv_orders WHERE order_id = 1");
+        }
+    }
+}
+```
+
+#### **ComputerOrderJobIntegrationTest.java**
+
+```java
+package com.example.batch;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.batch.core.Job;
+import org.springframework.batch.core.JobExecution;
+import org.springframework.batch.core.JobParametersBuilder;
+import org.springframework.batch.core.launch.JobLauncher;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+
+import javax.sql.DataSource;
+import java.sql.Connection;
+import java.sql.Statement;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+@SpringBootTest
+public class ComputerOrderJobIntegrationTest {
+
+    @Autowired
+    private JobLauncher jobLauncher;
+
+    @Autowired
+    private Job computerOrderJob;
+
+    @Autowired
+    private DataSource dataSource;
+
+    @BeforeEach
+    public void setUp() throws Exception {
+        try (Connection connection = dataSource.getConnection();
+             Statement statement = connection.createStatement()) {
+
+            statement.execute("INSERT INTO computer_orders (order_id, customer_name, order_date, total_amount, cpu, ram) VALUES (2, 'Jane Smith', '2024-07-31', 999.99, 'Intel i7', '16GB')");
+        }
+    }
+
+    @Test
+    public void testComputerOrderJob() throws Exception {
+        JobExecution jobExecution = jobLauncher.run(computerOrderJob, new JobParametersBuilder()
+            .addString("orderType", "Computer")
+            .toJobParameters());
+
+        assertEquals("COMPLETED", jobExecution.getStatus().toString());
+
+        // Verify output file or database entries
+
+        try (Connection connection = dataSource.getConnection();
+             Statement statement = connection.createStatement()) {
+
+            statement.execute("DELETE FROM computer_orders WHERE order_id = 2");
+        }
+    }
+}
+```
+
+### **5. Configuration Files**
+
+#### **application.properties**
+
+```properties
+spring.batch.job.enabled=false
+```
+
+#### **application-test.properties**
+
+```properties
+spring.datasource.url=jdbc:h2:mem:testdb
+spring.datasource.driver-class-name=org.h2.Driver
+spring.datasource.username=sa
+spring.datasource.password=password
+spring.jpa.database-platform=org.hibernate.dialect.H2Dialect
+```
+
+#### **schema.sql**
+
+```sql
+CREATE TABLE computer_orders (
+    order_id INT PRIMARY KEY,
+    customer_name VARCHAR(255),
+    order_date DATE,
+    total_amount DOUBLE
+
+,
+    cpu VARCHAR(255),
+    ram VARCHAR(255)
+);
+
+CREATE TABLE tv_orders (
+    order_id INT PRIMARY KEY,
+    customer_name VARCHAR(255),
+    order_date DATE,
+    total_amount DOUBLE,
+    model VARCHAR(255),
+    manufacturer VARCHAR(255)
+);
+```
+
+#### **data.sql**
+
+```sql
+-- Initial data can be added here if necessary
+```
+
+### **6. Dependencies**
+
+Ensure your `pom.xml` or `build.gradle` includes the necessary dependencies for Spring Batch, H2 database, and testing libraries.
+
+#### **pom.xml Example**
+
+```xml
+<dependencies>
+    <!-- Spring Boot and Batch dependencies -->
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-batch</artifactId>
+    </dependency>
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-data-jdbc</artifactId>
+    </dependency>
+    <dependency>
+        <groupId>org.h2</groupId>
+        <artifactId>h2</artifactId>
+        <scope>runtime</scope>
+    </dependency>
+    <!-- Test dependencies -->
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-test</artifactId>
+        <scope>test</scope>
+    </dependency>
+</dependencies>
+```
+
+This setup ensures the project is modular, handles high volume efficiently with separate readers and writers, and includes integration tests for both TV and Computer orders.
