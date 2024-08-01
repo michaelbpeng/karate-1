@@ -105,3 +105,174 @@ public Step orderProcessingStep() {
             throw new IllegalArgumentException("Invalid order type: " + orderType);
         }
     }
+
+
+
+------
+import org.springframework.batch.core.JobParameters;
+import org.springframework.batch.core.StepContribution;
+import org.springframework.batch.core.scope.context.ChunkContext;
+import org.springframework.batch.core.step.tasklet.TaskletStep;
+import org.springframework.batch.item.ItemReader;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.batch.core.Step;
+import org.springframework.batch.core.configuration.annotation.JobBuilderFactory;
+import org.springframework.batch.core.configuration.annotation.StepBuilderFactory;
+import org.springframework.batch.core.job.builder.JobBuilder;
+import org.springframework.batch.core.job.builder.JobBuilder;
+import org.springframework.batch.core.step.builder.StepBuilder;
+import org.springframework.batch.core.step.builder.StepBuilder;
+import org.springframework.batch.core.configuration.annotation.JobConfigurer;
+import org.springframework.batch.core.step.builder.StepBuilder;
+import org.springframework.batch.core.step.builder.StepBuilder;
+import org.springframework.batch.core.configuration.annotation.JobConfigurer;
+import org.springframework.batch.core.configuration.annotation.JobConfigurer;
+import org.springframework.batch.core.step.tasklet.TaskletStep;
+import org.springframework.batch.core.configuration.annotation.JobConfigurer;
+import org.springframework.batch.core.job.builder.JobBuilder;
+import org.springframework.batch.core.step.tasklet.TaskletStep;
+import org.springframework.batch.core.step.builder.StepBuilder;
+import org.springframework.batch.core.Step;
+import org.springframework.batch.core.configuration.annotation.StepBuilderFactory;
+import org.springframework.batch.core.configuration.annotation.JobConfigurer;
+import org.springframework.batch.core.Step;
+import org.springframework.batch.core.step.tasklet.TaskletStep;
+import org.springframework.batch.core.step.builder.StepBuilder;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+public class OrderProcessingJobConfig {
+
+    @Autowired
+    private JobBuilderFactory jobBuilderFactory;
+
+    @Autowired
+    private StepBuilderFactory stepBuilderFactory;
+
+    @Bean
+    public Job orderProcessingJob() {
+        return jobBuilderFactory.get("orderProcessingJob")
+                .start(orderStep())
+                .build();
+    }
+
+    @Bean
+    public Step orderStep() {
+        return stepBuilderFactory.get("orderStep")
+                .<Order, Order>chunk(100)
+                .reader(determineReader())
+                .processor(orderProcessor())
+                .writer(orderWriter())
+                .build();
+    }
+
+    @Bean
+    public ItemReader<Order> determineReader() {
+        return new ItemReader<Order>() {
+            @Override
+            public Order read() throws Exception {
+                JobParameters jobParameters = StepContribution.getStepContext().getStepExecution().getJobParameters();
+                String orderType = jobParameters.getString("orderType");
+                
+                if ("TV".equalsIgnoreCase(orderType)) {
+                    return new TVOrderReader(); // Adjust this to your actual TVOrderReader
+                } else if ("Computer".equalsIgnoreCase(orderType)) {
+                    return new ComputerOrderReader(); // Adjust this to your actual ComputerOrderReader
+                } else {
+                    throw new IllegalArgumentException("Invalid order type: " + orderType);
+                }
+            }
+        };
+    }
+
+    @Bean
+    public ItemProcessor<Order, Order> orderProcessor() {
+        // Return your processor here
+        return new OrderProcessor();
+    }
+
+    @Bean
+    public ItemWriter<Order> orderWriter() {
+        // Return your writer here
+        return new OrderWriter();
+    }
+}
+
+
+------
+-- Function to get TV orders within one day of a specific order_date
+CREATE OR REPLACE FUNCTION get_tv_orders_by_date(target_date DATE)
+RETURNS TABLE(
+    order_id INT,
+    customer_name VARCHAR,
+    order_date DATE,
+    total_amount DECIMAL,
+    model VARCHAR,
+    manufacturer VARCHAR
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT order_id, customer_name, order_date, total_amount, model, manufacturer
+    FROM tv_orders
+    WHERE order_date BETWEEN target_date - INTERVAL '1 day' AND target_date + INTERVAL '1 day';
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to get Computer orders within one day of a specific order_date
+CREATE OR REPLACE FUNCTION get_computer_orders_by_date(target_date DATE)
+RETURNS TABLE(
+    order_id INT,
+    customer_name VARCHAR,
+    order_date DATE,
+    total_amount DECIMAL,
+    cpu VARCHAR,
+    ram VARCHAR
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT order_id, customer_name, order_date, total_amount, cpu, ram
+    FROM computer_orders
+    WHERE order_date BETWEEN target_date - INTERVAL '1 day' AND target_date + INTERVAL '1 day';
+END;
+$$ LANGUAGE plpgsql;
+
+
+
+
+
+----
+
+import org.springframework.batch.item.database.JdbcCursorItemReader;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.jdbc.core.RowMapper;
+import javax.sql.DataSource;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+
+public class ComputerOrderCursorReader extends JdbcCursorItemReader<ComputerOrder> {
+
+    public ComputerOrderCursorReader(DataSource dataSource, java.sql.Date orderDate) {
+        setDataSource(dataSource);
+        setSql("SELECT * FROM get_computer_orders_by_date(?)");
+        setPreparedStatementSetter(ps -> ps.setDate(1, orderDate));
+        setRowMapper(new ComputerOrderRowMapper());
+    }
+
+    private static class ComputerOrderRowMapper implements RowMapper<ComputerOrder> {
+        @Override
+        public ComputerOrder mapRow(ResultSet rs, int rowNum) throws SQLException {
+            ComputerOrder computerOrder = new ComputerOrder();
+            computerOrder.setOrderId(rs.getInt("order_id"));
+            computerOrder.setCustomerName(rs.getString("customer_name"));
+            computerOrder.setOrderDate(rs.getDate("order_date").toLocalDate());
+            computerOrder.setTotalAmount(rs.getDouble("total_amount"));
+            computerOrder.setCpu(rs.getString("cpu"));
+            computerOrder.setRam(rs.getString("ram"));
+            return computerOrder;
+        }
+    }
+}
