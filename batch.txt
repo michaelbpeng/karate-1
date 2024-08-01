@@ -1,0 +1,107 @@
+    @Bean
+    public Job orderProcessingJob() {
+        return jobBuilderFactory.get("orderProcessingJob")
+                .start(decideStep())
+                .on("TV").to(tvOrderStep()).next(zipTvOrdersStep())
+                .from(decideStep())
+                .on("COMPUTER").to(computerOrderStep()).next(zipComputerOrdersStep())
+                .end()
+                .build();
+    }
+
+    @Bean
+    public Step decideStep() {
+        return stepBuilderFactory.get("decideStep")
+                .tasklet((contribution, chunkContext) -> {
+                    String orderType = (String) chunkContext.getStepContext().getJobParameters().get("orderType");
+                    contribution.setExitStatus(ExitStatus.COMPLETED.withExitCode(orderType));
+                    return RepeatStatus.FINISHED;
+                })
+                .build();
+    }
+
+
+---- retry
+    @Bean
+    public Job orderProcessingJob() {
+        return jobBuilderFactory.get("orderProcessingJob")
+                .start(decideStep())
+                .on("TV").to(tvOrderStep()).next(zipTvOrdersStep())
+                .from(decideStep())
+                .on("COMPUTER").to(computerOrderStep()).next(zipComputerOrdersStep())
+                .end()
+                .build();
+    }
+
+    @Bean
+    public Step decideStep() {
+        return stepBuilderFactory.get("decideStep")
+                .tasklet((contribution, chunkContext) -> {
+                    String orderType = (String) chunkContext.getStepContext().getJobParameters().get("orderType");
+                    contribution.setExitStatus(ExitStatus.COMPLETED.withExitCode(orderType));
+                    return RepeatStatus.FINISHED;
+                })
+                .build();
+    }
+
+
+-----
+@Bean
+public Step orderProcessingStep() {
+    return stepBuilderFactory.get("orderProcessingStep")
+            .<Order, Order>chunk(5000)
+            .reader(determineReader())
+            .writer(orderItemWriter)
+            .faultTolerant()
+            .retryLimit(3) // Retry up to 3 times on failure
+            .retry(Exception.class)
+            .taskExecutor(taskExecutor())
+            .throttleLimit(4)
+            .transactionManager(transactionManager)
+            .build();
+}
+
+
+----------
+   @Bean
+    public Step orderProcessingStep() {
+        return stepBuilderFactory.get("orderProcessingStep")
+                .<Object, Object>chunk(100)
+                .reader(determineReader())
+                .processor(orderProcessor)
+                .writer(determineWriter())
+                .transactionManager(transactionManager)
+                .build();
+    }
+
+    @Bean
+    public TaskletStep zipFileStep() {
+        return stepBuilderFactory.get("zipFileStep")
+                .tasklet(zipFileTasklet)
+                .transactionManager(transactionManager)
+                .build();
+    }
+
+    @Bean
+    public ItemReader<Object> determineReader() {
+        String orderType = jobParameters.getString("orderType");
+        if ("TV".equalsIgnoreCase(orderType)) {
+            return tvOrderReader;
+        } else if ("Computer".equalsIgnoreCase(orderType)) {
+            return computerOrderReader;
+        } else {
+            throw new IllegalArgumentException("Invalid order type: " + orderType);
+        }
+    }
+
+    @Bean
+    public ItemWriter<Object> determineWriter() {
+        String orderType = jobParameters.getString("orderType");
+        if ("TV".equalsIgnoreCase(orderType)) {
+            return tvOrderItemWriter;
+        } else if ("Computer".equalsIgnoreCase(orderType)) {
+            return computerOrderItemWriter;
+        } else {
+            throw new IllegalArgumentException("Invalid order type: " + orderType);
+        }
+    }
