@@ -276,3 +276,135 @@ public class ComputerOrderCursorReader extends JdbcCursorItemReader<ComputerOrde
         }
     }
 }
+
+
+-----------
+———————————————
+—config
+    @Bean
+    public ItemReader<Order> orderReader(@Value("#{jobParameters['orderDate']}") String orderDate) {
+        return new OrderReader(dataSource, orderDate);
+    }
+
+
+
+    @Bean
+    public Step processComputerOrderStep() {
+        return stepBuilderFactory.get("processComputerOrderStep")
+                .<ComputerOrder, ComputerOrder>chunk(10)
+                .reader(computerOrderReader())
+                .processor(orderProcessor())
+                .writer(computerOrderItemWriter)
+                .build();
+    }
+
+// item processor - conversion
+package com.example.batch.processor;
+
+import com.example.batch.entity.Order;
+import org.springframework.batch.item.ItemProcessor;
+import org.springframework.stereotype.Component;
+
+@Component
+public class OrderProcessor implements ItemProcessor<Order, Order> {
+
+    @Override
+    public Order process(Order item) {
+        // Implement your processing logic here
+        return item;
+    }
+}
+———————————————————————
+
+## 1. `src/main/java/com/example/batch/listener/ComputerOrderReadListener.java`
+
+```java
+package com.example.batch.listener;
+
+import com.example.batch.entity.ComputerOrder;
+import org.springframework.batch.core.ItemReadListener;
+import org.springframework.batch.core.StepExecution;
+import org.springframework.batch.core.annotation.OnReadError;
+import org.springframework.batch.core.configuration.annotation.JobBuilderFactory;
+import org.springframework.batch.core.configuration.annotation.StepBuilderFactory;
+import org.springframework.batch.core.scope.context.ChunkContext;
+import org.springframework.batch.core.scope.context.ChunkContext;
+import org.springframework.batch.core.scope.context.JobContext;
+import org.springframework.batch.core.step.tasklet.TaskletStep;
+import org.springframework.batch.core.step.tasklet.Tasklet;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.batch.core.StepExecutionListener;
+/**
+  itemReadLInstener
+*/
+public class ComputerOrderReadListener implements ItemReadListener<ComputerOrder> {
+
+    @Autowired
+    private JobBuilderFactory jobBuilderFactory;
+
+    @Autowired
+    private StepBuilderFactory stepBuilderFactory;
+
+    @Override
+    public void beforeRead() {
+        // Optional: Code before reading an item
+    }
+
+    @Override
+    public void afterRead(ComputerOrder item) {
+        // Example logic to update totals
+        StepExecution stepExecution = jobExecution.getExecutionContext().getStepExecution();
+        ChunkContext chunkContext = stepExecution.getJobExecution().getExecutionContext();
+        int totalAccount = (int) chunkContext.get("totalAccount");
+        double totalAmount = (double) chunkContext.get("totalAmount");
+        
+        totalAccount += 1;
+        totalAmount += item.getPrice() * item.getQuantity();
+        
+        chunkContext.put("totalAccount", totalAccount);
+        chunkContext.put("totalAmount", totalAmount);
+    }
+
+    @Override
+    public void onReadError(Exception ex) {
+        // Optional: Code to handle read errors
+    }
+}
+```
+
+
+———————
+
+    @Bean
+    public Step tvOrderStep() {
+        return stepBuilderFactory.get("tvOrderStep")
+                .<TVOrder, TVOrder>chunk(1000)
+                .reader(tvOrderReader)
+                .writer(new OrderItemWriter<>(
+                        "tvOrders.csv",
+                        tvOrderLineAggregator,
+                        "Header for TV Orders",
+                        "Trailer for TV Orders"
+                ))
+                .listener(tvOrderReadListener) // item read listener
+                .taskExecutor(taskExecutor())
+                .build();
+    }
+——
+@Bean
+public Step orderProcessingStep() {
+    return stepBuilderFactory.get("orderProcessingStep")
+            .<Order, Order>chunk(5000)
+            .reader(determineReader())
+            .writer(orderItemWriter)
+            .faultTolerant()
+            .retryLimit(3) // Retry up to 3 times on failure
+            .retry(Exception.class)
+            .taskExecutor(taskExecutor())
+            .throttleLimit(4)
+            .transactionManager(transactionManager)
+            .build();
+}
+———
+
+
