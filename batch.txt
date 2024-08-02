@@ -1,4 +1,78 @@
-    @Bean
+
+/////integration test
+
+package com.example.batch.job;
+
+import com.example.batch.entity.ComputerOrder;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.batch.core.Job;
+import org.springframework.batch.core.JobExecution;
+import org.springframework.batch.core.JobParametersBuilder;
+import org.springframework.batch.core.launch.JobLauncher;
+import org.springframework.batch.core.repository.JobRepository;
+import org.springframework.batch.test.MetaDataInstanceFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
+
+import javax.sql.DataSource;
+import java.time.LocalDate;
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+@SpringBootTest
+@ActiveProfiles("test")
+public class ComputerOrderJobIntegrationTest {
+
+    @Autowired
+    private JobLauncher jobLauncher;
+
+    @Autowired
+    private Job computerOrderJob;
+
+    @Autowired
+    private JobRepository jobRepository;
+
+    @Autowired
+    private DataSource dataSource;
+
+    @BeforeEach
+    public void setUp() throws Exception {
+        // Insert test data into the database
+        try (var connection = dataSource.getConnection();
+             var statement = connection.createStatement()) {
+
+            statement.execute("INSERT INTO computer_orders (order_id, customer_name, order_date, total_amount, cpu, ram) VALUES (2, 'Jane Smith', '2024-07-31', 999.99, 'Intel i7', '16GB')");
+        }
+    }
+
+    @Test
+    public void testComputerOrderJob() throws Exception {
+        JobExecution jobExecution = jobLauncher.run(computerOrderJob, new JobParametersBuilder()
+            .addString("orderType", "Computer")
+            .toJobParameters());
+
+        assertEquals("COMPLETED", jobExecution.getStatus().toString());
+
+        // Check output file or database table where results are written
+        // For this example, let's assume we are writing to a file
+        // Verify that the file contains the expected data
+
+        // Cleanup test data from the database
+        try (var connection = dataSource.getConnection();
+             var statement = connection.createStatement()) {
+
+            statement.execute("DELETE FROM computer_orders WHERE order_id = 2");
+        }
+    }
+}
+
+
+
+
+@Bean
     public Job orderProcessingJob() {
         return jobBuilderFactory.get("orderProcessingJob")
                 .start(decideStep())
@@ -106,6 +180,74 @@ public Step orderProcessingStep() {
         }
     }
 
+-----
+package com.example.batch.job;
+
+import com.example.batch.entity.ComputerOrder;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.batch.core.Job;
+import org.springframework.batch.core.JobExecution;
+import org.springframework.batch.core.JobParametersBuilder;
+import org.springframework.batch.core.launch.JobLauncher;
+import org.springframework.batch.core.repository.JobRepository;
+import org.springframework.batch.test.MetaDataInstanceFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
+
+import javax.sql.DataSource;
+import java.time.LocalDate;
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+@SpringBootTest
+@ActiveProfiles("test")
+public class ComputerOrderJobIntegrationTest {
+
+    @Autowired
+    private JobLauncher jobLauncher;
+
+    @Autowired
+    private Job computerOrderJob;
+
+    @Autowired
+    private JobRepository jobRepository;
+
+    @Autowired
+    private DataSource dataSource;
+
+    @BeforeEach
+    public void setUp() throws Exception {
+        // Insert test data into the database
+        try (var connection = dataSource.getConnection();
+             var statement = connection.createStatement()) {
+
+            statement.execute("INSERT INTO computer_orders (order_id, customer_name, order_date, total_amount, cpu, ram) VALUES (2, 'Jane Smith', '2024-07-31', 999.99, 'Intel i7', '16GB')");
+        }
+    }
+
+    @Test
+    public void testComputerOrderJob() throws Exception {
+        JobExecution jobExecution = jobLauncher.run(computerOrderJob, new JobParametersBuilder()
+            .addString("orderType", "Computer")
+            .toJobParameters());
+
+        assertEquals("COMPLETED", jobExecution.getStatus().toString());
+
+        // Check output file or database table where results are written
+        // For this example, let's assume we are writing to a file
+        // Verify that the file contains the expected data
+
+        // Cleanup test data from the database
+        try (var connection = dataSource.getConnection();
+             var statement = connection.createStatement()) {
+
+            statement.execute("DELETE FROM computer_orders WHERE order_id = 2");
+        }
+    }
+}
 
 
 ------
