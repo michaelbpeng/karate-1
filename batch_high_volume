@@ -1,0 +1,255 @@
+If you want to optimize performance and avoid using JPA for large-scale data processing, you can leverage alternative approaches such as using JDBC for direct database operations, optimizing batch processing, and minimizing overhead. Here's how you can adjust the Spring Batch setup to use JDBC instead of JPA for improved performance:
+
+### 1. **Using JDBC with Spring Batch**
+
+**1.1 Dependencies**
+
+First, ensure that you have the necessary dependencies in your `pom.xml`. You can use Spring's JDBC support for this purpose:
+
+```xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-jdbc</artifactId>
+</dependency>
+<dependency>
+    <groupId>org.springframework</groupId>
+    <artifactId>spring-jdbc</artifactId>
+</dependency>
+<dependency>
+    <groupId>com.h2database</groupId>
+    <artifactId>h2</artifactId>
+    <scope>runtime</scope>
+</dependency>
+```
+
+**1.2 Configuration**
+
+Set up your `DataSource` and `JdbcTemplate`:
+
+```java
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.datasource.DriverManagerDataSource;
+
+import javax.sql.DataSource;
+
+@Configuration
+public class DataSourceConfig {
+
+    @Bean
+    public DataSource dataSource() {
+        DriverManagerDataSource dataSource = new DriverManagerDataSource();
+        dataSource.setDriverClassName("org.h2.Driver");
+        dataSource.setUrl("jdbc:h2:mem:testdb;DB_CLOSE_ON_EXIT=FALSE");
+        dataSource.setUsername("sa");
+        dataSource.setPassword("");
+        return dataSource;
+    }
+
+    @Bean
+    public JdbcTemplate jdbcTemplate() {
+        return new JdbcTemplate(dataSource());
+    }
+}
+```
+
+### 2. **Using JdbcCursorItemReader**
+
+For reading data using JDBC, you can use `JdbcCursorItemReader`. This approach uses SQL queries and processes rows as they are fetched, which is efficient for large datasets.
+
+**2.1 Setup JdbcCursorItemReader**
+
+```java
+import org.springframework.batch.item.database.JdbcCursorItemReader;
+import org.springframework.batch.item.database.builder.JdbcCursorItemReaderBuilder;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+public class BatchConfig {
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
+    @Bean
+    public JdbcCursorItemReader<SourceEntity> reader() {
+        return new JdbcCursorItemReaderBuilder<SourceEntity>()
+                .dataSource(jdbcTemplate.getDataSource())
+                .name("sourceReader")
+                .sql("SELECT id, data FROM source_entity")
+                .rowMapper((rs, rowNum) -> {
+                    SourceEntity entity = new SourceEntity();
+                    entity.setId(rs.getLong("id"));
+                    entity.setData(rs.getString("data"));
+                    return entity;
+                })
+                .build();
+    }
+}
+```
+
+### 3. **Using JdbcBatchItemWriter**
+
+For writing data, `JdbcBatchItemWriter` provides efficient batch writes. This avoids the overhead of ORM frameworks and handles bulk insertions or updates directly.
+
+**3.1 Setup JdbcBatchItemWriter**
+
+```java
+import org.springframework.batch.item.database.builder.JdbcBatchItemWriterBuilder;
+import org.springframework.batch.item.database.JdbcBatchItemWriter;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+public class BatchConfig {
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
+    @Bean
+    public JdbcBatchItemWriter<DestinationEntity> writer() {
+        return new JdbcBatchItemWriterBuilder<DestinationEntity>()
+                .dataSource(jdbcTemplate.getDataSource())
+                .sql("INSERT INTO destination_entity (id, data) VALUES (:id, :data)")
+                .beanMapped()
+                .build();
+    }
+}
+```
+
+### 4. **Processor and Auditing**
+
+For the processor, handle processing logic and auditing directly:
+
+**4.1 Processor**
+
+```java
+import org.springframework.batch.item.ItemProcessor;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
+
+@Component
+public class MyItemProcessor implements ItemProcessor<SourceEntity, DestinationEntity> {
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
+    @Override
+    public DestinationEntity process(SourceEntity item) throws Exception {
+        // Create and save audit record
+        String sql = "INSERT INTO audit_entity (item_id, item_data, processed_time, status) VALUES (?, ?, ?, ?)";
+        jdbcTemplate.update(sql, item.getId(), item.getData(), LocalDateTime.now(), "Processed");
+
+        DestinationEntity destination = new DestinationEntity();
+        destination.setId(item.getId());
+        destination.setData(item.getData());
+
+        return destination;
+    }
+}
+```
+
+### 5. **Complete Batch Configuration**
+
+**5.1 Complete Batch Configuration**
+
+```java
+import org.springframework.batch.core.Job;
+import org.springframework.batch.core.Step;
+import org.springframework.batch.core.configuration.annotation.EnableBatchProcessing;
+import org.springframework.batch.core.configuration.annotation.JobBuilderFactory;
+import org.springframework.batch.core.configuration.annotation.StepBuilderFactory;
+import org.springframework.batch.core.configuration.annotation.JobBuilderFactory;
+import org.springframework.batch.core.step.tasklet.Tasklet;
+import org.springframework.batch.core.step.tasklet.TaskletStep;
+import org.springframework.batch.repeat.RepeatStatus;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+@EnableBatchProcessing
+public class BatchConfig {
+
+    @Autowired
+    private JobBuilderFactory jobBuilderFactory;
+
+    @Autowired
+    private StepBuilderFactory stepBuilderFactory;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
+    @Autowired
+    private ItemProcessor<SourceEntity, DestinationEntity> processor;
+
+    @Autowired
+    private JdbcBatchItemWriter<DestinationEntity> writer;
+
+    @Bean
+    public JdbcCursorItemReader<SourceEntity> reader() {
+        return new JdbcCursorItemReaderBuilder<SourceEntity>()
+                .dataSource(jdbcTemplate.getDataSource())
+                .name("sourceReader")
+                .sql("SELECT id, data FROM source_entity")
+                .rowMapper((rs, rowNum) -> {
+                    SourceEntity entity = new SourceEntity();
+                    entity.setId(rs.getLong("id"));
+                    entity.setData(rs.getString("data"));
+                    return entity;
+                })
+                .build();
+    }
+
+    @Bean
+    public Step step1() {
+        return stepBuilderFactory.get("step1")
+                .<SourceEntity, DestinationEntity>chunk(1000) // Adjust chunk size for performance
+                .reader(reader())
+                .processor(processor)
+                .writer(writer)
+                .build();
+    }
+
+    @Bean
+    public Job importUserJob() {
+        return jobBuilderFactory.get("importUserJob")
+                .flow(step1())
+                .end()
+                .build();
+    }
+}
+```
+
+### 6. **Adjust Chunk Size**
+
+The chunk size is critical in optimizing performance:
+
+```java
+@Bean
+public Step step1() {
+    return stepBuilderFactory.get("step1")
+            .<SourceEntity, DestinationEntity>chunk(1000) // Adjust based on performance tests
+            .reader(reader())
+            .processor(processor())
+            .writer(writer())
+            .build();
+}
+```
+
+### 7. **Transaction Management**
+
+Spring Batch handles transactions for you, but ensure that the database settings are optimized for batch processing.
+
+### Summary
+
+**Optimizing a Spring Batch project using JDBC includes:**
+
+1. **Using `JdbcCursorItemReader`** for efficient data reading.
+2. **Using `JdbcBatchItemWriter`** for bulk data writing.
+3. **Configuring a `JdbcTemplate`** for efficient database operations.
+4. **Handling data processing and auditing directly** in the processor.
+5. **Adjusting chunk sizes** based on performance testing.
+
+By leveraging these strategies, you can significantly enhance the performance of your Spring Batch application when working with large datasets, avoiding the overhead associated with JPA and ORM frameworks.
