@@ -439,3 +439,204 @@ public class JobStartListener implements JobExecutionListener {
 ——————————
 
 You can now build and run this project using Maven or Gradle. Make sure to replace placeholders in `application.properties` with your actual database credentials.
+
+
+
+---
+package com.example.batch;
+
+import lombok.RequiredArgsConstructor;
+import org.springframework.batch.item.ItemWriter;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionStatus;
+import org.springframework.transaction.support.DefaultTransactionDefinition;
+
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.List;
+
+@RequiredArgsConstructor
+public class PurchaseOrderItemWriter implements ItemWriter<PurchaseOrder> {
+    private final String outputPath;
+    private final JdbcTemplate jdbcTemplate;
+    private final PlatformTransactionManager transactionManager;
+    private final StepExecution stepExecution;
+
+    @Override
+    public void write(List<? extends PurchaseOrder> items) throws IOException {
+        DefaultTransactionDefinition def = new DefaultTransactionDefinition();
+        def.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRED);
+        TransactionStatus status = transactionManager.getTransaction(def);
+
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(outputPath, true))) {
+            for (PurchaseOrder order : items) {
+                writer.write(order.toString()); // Adjust the format as needed
+                writer.newLine();
+            }
+
+            // Perform bulk insert into the mapping table
+            Long summaryId = (Long) stepExecution.getJobExecution().getExecutionContext().get("summaryId");
+            String sql = "INSERT INTO DailyOrderSummary_PurchaseOrder (summary_id, purchase_order_id) VALUES (?, ?)";
+
+            jdbcTemplate.batchUpdate(sql, items, items.size(), (ps, purchaseOrder) -> {
+                ps.setLong(1, summaryId);
+                ps.setLong(2, purchaseOrder.getId());
+            });
+
+            // Retrieve accumulated totals and update the summary table
+            Integer totalOrders = stepExecution.getExecutionContext().getInt("totalOrders", 0);
+            Double totalAmount = stepExecution.getExecutionContext().getDouble("totalAmount", 0.0);
+
+            insertOrUpdateSummary(summaryId, totalOrders, totalAmount);
+
+            transactionManager.commit(status);
+        } catch (Exception e) {
+            transactionManager.rollback(status);
+            throw e;
+        }
+    }
+
+    private void insertOrUpdateSummary(Long summaryId, int totalOrders, double totalAmount) {
+        jdbcTemplate.update(
+            "INSERT INTO DailyOrderSummary (summary_id, total_orders, total_amount) VALUES (?, ?, ?) " +
+            "ON CONFLICT (summary_id) DO UPDATE SET total_orders = excluded.total_orders, total_amount = excluded.total_amount",
+            summaryId, totalOrders, totalAmount
+        );
+    }
+}
+
+
+
+
+------------
+Let's revert to using YAML for externalizing SQL queries. Here's how you can adjust the project to load SQL queries from a YAML file.
+
+### 1. **Create a YAML Configuration File**
+
+Create a YAML configuration file, e.g., `sql-queries.yml`, in the `src/main/resources` directory.
+
+**`sql-queries.yml`**:
+
+```yaml
+purchaseOrder:
+  insertMapping: "INSERT INTO DailyOrderSummary_PurchaseOrder (summary_id, purchase_order_id) VALUES (?, ?)"
+  insertOrUpdateSummary: |
+    INSERT INTO DailyOrderSummary (summary_id, total_orders, total_amount) VALUES (?, ?, ?)
+    ON CONFLICT (summary_id) DO UPDATE SET total_orders = excluded.total_orders, total_amount = excluded.total_amount
+```
+
+### 2. **Load Queries from the YAML File**
+
+You can use the `@ConfigurationProperties` annotation to load the properties from the YAML file.
+
+**`SqlQueriesConfig.java`**:
+
+```java
+package com.example.batch;
+
+import lombok.Getter;
+import lombok.Setter;
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+@ConfigurationProperties(prefix = "purchaseOrder")
+@Getter
+@Setter
+public class SqlQueriesConfig {
+    private String insertMapping;
+    private String insertOrUpdateSummary;
+}
+```
+
+### 3. **Configure `application.yml` to Import `sql-queries.yml`**
+
+Ensure that Spring Boot is aware of your `sql-queries.yml` file by importing it in your `application.yml`.
+
+**`application.yml`**:
+
+```yaml
+spring:
+  config:
+    import: "classpath:sql-queries.yml"
+```
+
+### 4. **Inject the Queries into `PurchaseOrderItemWriter`**
+
+Now, you can inject the `SqlQueriesConfig` bean into your `PurchaseOrderItemWriter` and use the loaded queries.
+
+**`PurchaseOrderItemWriter.java`**:
+
+```java
+package com.example.batch;
+
+import lombok.RequiredArgsConstructor;
+import org.springframework.batch.item.ItemWriter;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionStatus;
+import org.springframework.transaction.support.DefaultTransactionDefinition;
+
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.List;
+
+@RequiredArgsConstructor
+public class PurchaseOrderItemWriter implements ItemWriter<PurchaseOrder> {
+    private final String outputPath;
+    private final JdbcTemplate jdbcTemplate;
+    private final PlatformTransactionManager transactionManager;
+    private final StepExecution stepExecution;
+    private final SqlQueriesConfig sqlQueriesConfig;
+
+    @Override
+    public void write(List<? extends PurchaseOrder> items) throws IOException {
+        DefaultTransactionDefinition def = new DefaultTransactionDefinition();
+        def.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRED);
+        TransactionStatus status = transactionManager.getTransaction(def);
+
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(outputPath, true))) {
+            for (PurchaseOrder order : items) {
+                writer.write(order.toString()); // Adjust the format as needed
+                writer.newLine();
+            }
+
+            // Perform bulk insert into the mapping table using externalized query
+            Long summaryId = (Long) stepExecution.getJobExecution().getExecutionContext().get("summaryId");
+            String insertMappingQuery = sqlQueriesConfig.getInsertMapping();
+
+            jdbcTemplate.batchUpdate(insertMappingQuery, items, items.size(), (ps, purchaseOrder) -> {
+                ps.setLong(1, summaryId);
+                ps.setLong(2, purchaseOrder.getId());
+            });
+
+            // Retrieve accumulated totals and update the summary table using externalized query
+            Integer totalOrders = stepExecution.getExecutionContext().getInt("totalOrders", 0);
+            Double totalAmount = stepExecution.getExecutionContext().getDouble("totalAmount", 0.0);
+            String insertOrUpdateSummaryQuery = sqlQueriesConfig.getInsertOrUpdateSummary();
+
+            insertOrUpdateSummary(summaryId, totalOrders, totalAmount, insertOrUpdateSummaryQuery);
+
+            transactionManager.commit(status);
+        } catch (Exception e) {
+            transactionManager.rollback(status);
+            throw e;
+        }
+    }
+
+    private void insertOrUpdateSummary(Long summaryId, int totalOrders, double totalAmount, String query) {
+        jdbcTemplate.update(query, summaryId, totalOrders, totalAmount);
+    }
+}
+```
+
+### Summary
+
+- **Externalized Queries**: SQL queries are now stored in `sql-queries.yml`.
+- **Configuration Class**: The `SqlQueriesConfig` class is used to load and provide these queries to the writer.
+- **Usage**: The `PurchaseOrderItemWriter` class reads the queries from the configuration and uses them in the batch processing logic.
+
+This setup allows you to manage your SQL queries easily from a YAML file, making it easier to update and maintain without altering the codebase.
