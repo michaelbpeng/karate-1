@@ -640,3 +640,109 @@ public class PurchaseOrderItemWriter implements ItemWriter<PurchaseOrder> {
 - **Usage**: The `PurchaseOrderItemWriter` class reads the queries from the configuration and uses them in the batch processing logic.
 
 This setup allows you to manage your SQL queries easily from a YAML file, making it easier to update and maintain without altering the codebase.
+
+
+---------
+timestamp with tz
+package com.example.batch.reader;
+
+import com.example.batch.model.PurchaseOrder;
+import com.example.batch.config.SqlQueriesConfig;
+import com.example.batch.rowmapper.PurchaseOrderRowMapper;
+import lombok.RequiredArgsConstructor;
+import org.springframework.batch.core.JobExecution;
+import org.springframework.batch.core.configuration.annotation.StepScope;
+import org.springframework.batch.core.scope.context.StepContext;
+import org.springframework.batch.core.scope.context.StepSynchronizationManager;
+import org.springframework.batch.item.database.JdbcCursorItemReader;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
+
+import javax.sql.DataSource;
+import java.util.Date;
+
+@Configuration
+@RequiredArgsConstructor
+public class PurchaseOrderItemReader {
+
+    private final DataSource dataSource;
+    private final SqlQueriesConfig sqlQueriesConfig;
+
+    @Bean
+    @StepScope
+    public JdbcCursorItemReader<PurchaseOrder> reader() {
+        JdbcCursorItemReader<PurchaseOrder> reader = new JdbcCursorItemReader<>();
+
+        StepContext stepContext = StepSynchronizationManager.getContext();
+        JobExecution jobExecution = stepContext.getStepExecution().getJobExecution();
+
+        reader.setDataSource(dataSource);
+        reader.setSql(sqlQueriesConfig.getSelectOrders());
+        reader.setRowMapper(new PurchaseOrderRowMapper());
+
+        // Retrieve the order timestamp and timezone from job parameters
+        Date orderTimestamp = jobExecution.getJobParameters().getDate("orderTimestamp");
+        String timeZone = jobExecution.getJobParameters().getString("timeZone");
+
+        // Bind the timestamp and timezone parameters to the query
+        NamedParameterJdbcTemplate namedParameterJdbcTemplate = new NamedParameterJdbcTemplate(dataSource);
+        MapSqlParameterSource parameters = new MapSqlParameterSource();
+        parameters.addValue("orderTimestamp", orderTimestamp);
+        parameters.addValue("timeZone", timeZone);
+
+        reader.setPreparedStatementSetter(ps -> {
+            ps.setTimestamp(1, new java.sql.Timestamp(orderTimestamp.getTime()));
+            ps.setString(2, timeZone);
+        });
+
+        return reader;
+    }
+}
+
+
+
+purchaseOrder:
+  insertMapping: "INSERT INTO DailyOrderSummary_PurchaseOrder (summary_id, purchase_order_id) VALUES (?, ?)"
+  insertOrUpdateSummary: |
+    INSERT INTO DailyOrderSummary (summary_id, total_orders, total_amount) VALUES (?, ?, ?)
+    ON CONFLICT (summary_id) DO UPDATE SET total_orders = excluded.total_orders, total_amount = excluded.total_amount
+  selectOrders: |
+    SELECT id, description, amount 
+    FROM PurchaseOrder 
+    WHERE order_timestamp >= (DATE_TRUNC('day', :orderTimestamp AT TIME ZONE :timeZone) AT TIME ZONE :timeZone)
+    AND order_timestamp < ((DATE_TRUNC('day', :orderTimestamp AT TIME ZONE :timeZone) + INTERVAL '1 day') AT TIME ZONE :timeZone)
+
+
+
+
+'America/New_York'
+
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/yourdatabase
+    username: yourusername
+    password: yourpassword
+    driver-class-name: org.postgresql.Driver
+  batch:
+    initialize-schema: always
+  sql:
+    script-encoding: UTF-8
+    separator: ";"
+  default:
+    time-zone: America/New_York
+
+
+
+purchaseOrder:
+  insertMapping: "INSERT INTO DailyOrderSummary_PurchaseOrder (summary_id, purchase_order_id) VALUES (?, ?)"
+  insertOrUpdateSummary: |
+    INSERT INTO DailyOrderSummary (summary_id, total_orders, total_amount) VALUES (?, ?, ?)
+    ON CONFLICT (summary_id) DO UPDATE SET total_orders = excluded.total_orders, total_amount = excluded.total_amount
+  selectOrders: |
+    SELECT id, description, amount 
+    FROM PurchaseOrder 
+    WHERE order_timestamp >= DATE_TRUNC('day', CURRENT_TIMESTAMP AT TIME ZONE 'America/New_York')
+    AND order_timestamp < DATE_TRUNC('day', CURRENT_TIMESTAMP AT TIME ZONE 'America/New_York') + INTERVAL '1 day'
+
