@@ -746,3 +746,129 @@ purchaseOrder:
     WHERE order_timestamp >= DATE_TRUNC('day', CURRENT_TIMESTAMP AT TIME ZONE 'America/New_York')
     AND order_timestamp < DATE_TRUNC('day', CURRENT_TIMESTAMP AT TIME ZONE 'America/New_York') + INTERVAL '1 day'
 
+package com.example.batch.reader;
+
+import com.example.batch.model.PurchaseOrder;
+import com.example.batch.config.SqlQueriesConfig;
+import com.example.batch.rowmapper.PurchaseOrderRowMapper;
+import lombok.RequiredArgsConstructor;
+import org.springframework.batch.core.JobExecution;
+import org.springframework.batch.core.configuration.annotation.StepScope;
+import org.springframework.batch.core.scope.context.StepContext;
+import org.springframework.batch.core.scope.context.StepSynchronizationManager;
+import org.springframework.batch.item.database.JdbcCursorItemReader;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
+
+import javax.sql.DataSource;
+import java.util.Date;
+
+@Configuration
+@RequiredArgsConstructor
+public class PurchaseOrderItemReader {
+
+    private final DataSource dataSource;
+    private final SqlQueriesConfig sqlQueriesConfig;
+
+    @Bean
+    @StepScope
+    public JdbcCursorItemReader<PurchaseOrder> reader() {
+        JdbcCursorItemReader<PurchaseOrder> reader = new JdbcCursorItemReader<>();
+
+        StepContext stepContext = StepSynchronizationManager.getContext();
+        JobExecution jobExecution = stepContext.getStepExecution().getJobExecution();
+
+        reader.setDataSource(dataSource);
+        reader.setSql(sqlQueriesConfig.getSelectOrders());
+        reader.setRowMapper(new PurchaseOrderRowMapper());
+
+        // Retrieve the order timestamp from job parameters
+        Date orderTimestamp = jobExecution.getJobParameters().getDate("orderTimestamp");
+
+        // Bind the timestamp parameter to the query
+        NamedParameterJdbcTemplate namedParameterJdbcTemplate = new NamedParameterJdbcTemplate(dataSource);
+        MapSqlParameterSource parameters = new MapSqlParameterSource();
+        parameters.addValue("orderTimestamp", orderTimestamp);
+
+        reader.setPreparedStatementSetter(ps -> {
+            ps.setTimestamp(1, new java.sql.Timestamp(orderTimestamp.getTime()));
+        });
+
+        return reader;
+    }
+}
+
+
+
+package com.example.batch.writer;
+
+import com.example.batch.config.SqlQueriesConfig;
+import com.example.batch.model.PurchaseOrder;
+import lombok.RequiredArgsConstructor;
+import org.springframework.batch.item.ItemWriter;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+@RequiredArgsConstructor
+public class PurchaseOrderItemWriter implements ItemWriter<PurchaseOrder> {
+
+    private final String outputPath;
+    private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
+    private final SqlQueriesConfig sqlQueriesConfig;
+
+    @Override
+    @Transactional
+    public void write(List<? extends PurchaseOrder> items) throws IOException {
+        // Write purchase orders to the file
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(outputPath, true))) {
+            for (PurchaseOrder item : items) {
+                writer.write(item.toString());
+                writer.newLine();
+            }
+        }
+
+        // Retrieve summaryId from the context (assuming it's set somewhere else in the job execution context)
+        Integer summaryId = getSummaryIdFromContext(); // Replace with actual method to retrieve summaryId
+
+        // Prepare parameters for batch insert
+        List<Map<String, Object>> batchValues = items.stream()
+            .map(order -> Map.of(
+                "summaryId", summaryId,
+                "purchaseOrderId", order.getId()
+            ))
+            .collect(Collectors.toList());
+
+        // Insert into DailyOrderSummary_PurchaseOrder table
+        namedParameterJdbcTemplate.batchUpdate(sqlQueriesConfig.getInsertMapping(), batchValues);
+
+        // Calculate total orders and total amount
+        BigDecimal totalAmount = items.stream()
+            .map(PurchaseOrder::getAmount)
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        Map<String, Object> summaryValues = Map.of(
+            "summaryId", summaryId,
+            "totalOrders", items.size(),
+            "totalAmount", totalAmount
+        );
+
+        // Insert or update DailyOrderSummary table
+        namedParameterJdbcTemplate.update(sqlQueriesConfig.getInsertOrUpdateSummary(), summaryValues);
+    }
+
+    // Dummy method to retrieve summaryId from context; replace with actual implementation
+    private Integer getSummaryIdFromContext() {
+        // Implement logic to retrieve summaryId from job execution context
+        return 1; // Placeholder
+    }
+}
