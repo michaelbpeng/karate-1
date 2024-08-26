@@ -2049,3 +2049,46 @@ Ensure your `pom.xml` or `build.gradle` includes the necessary dependencies for 
 ```
 
 This setup ensures the project is modular, handles high volume efficiently with separate readers and writers, and includes integration tests for both TV and Computer orders.
+
+
+Example: Thread-Safe ItemWriter
+In this example, the SynchronizedItemWriter class wraps another ItemWriter and ensures that the write() method is executed in a synchronized block. This prevents multiple threads from writing to the file simultaneously.
+
+java
+Copy code
+import org.springframework.batch.item.ItemWriter;
+import java.util.List;
+
+public class SynchronizedItemWriter<T> implements ItemWriter<T> {
+
+    private final ItemWriter<T> delegate;
+
+    public SynchronizedItemWriter(ItemWriter<T> delegate) {
+        this.delegate = delegate;
+    }
+
+    @Override
+    public synchronized void write(List<? extends T> items) throws Exception {
+        delegate.write(items);
+    }
+}
+Explanation:
+Synchronized Block: The write() method is marked as synchronized, which ensures that only one thread can execute this method at a time. This guarantees that the underlying ItemWriter (the delegate) is not accessed concurrently by multiple threads.
+
+Delegate Pattern: The SynchronizedItemWriter takes another ItemWriter as a delegate, allowing you to add thread safety without modifying the original ItemWriter implementation.
+
+Alternative Approaches:
+File Locking: If writing to a file, consider using file locks to ensure that only one thread writes to the file at a time. This can be done using FileChannel and FileLock in Java.
+
+Thread-Local Storage: If possible, avoid shared state by using thread-local storage or giving each thread its own ItemWriter instance.
+
+Concurrent Data Structures: Use concurrent data structures like ConcurrentHashMap, BlockingQueue, or similar to manage shared state safely.
+
+Considerations:
+Performance: Synchronization can reduce the performance benefits of parallel processing. Test your application to ensure that the trade-off between thread safety and performance is acceptable.
+
+Idempotency: Ensure that the write() operation is idempotent if there’s a risk of retries.
+
+By ensuring thread safety, you can confidently use parallel processing with a TaskExecutor without risking data corruption or inconsistencies.
+        
+        
