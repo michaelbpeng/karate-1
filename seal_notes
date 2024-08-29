@@ -924,16 +924,22 @@ public class ChaosAspect {
 
     @Around("@annotation(chaosTest)")
     public Object applyChaos(ProceedingJoinPoint joinPoint, ChaosTest chaosTest) throws Throwable {
-        switch (chaosTest.value()) {
-            case DELAY:
-                return induceDelay(joinPoint);
-            case EXCEPTION:
-                return throwException();
-            case MODIFY_RESPONSE:
-                return modifyResponse(joinPoint);
-            default:
-                return joinPoint.proceed();
+        // 30% chance to apply chaos
+        if (random.nextInt(100) < 30) {
+            ChaosType chaosType = selectRandomChaosType(chaosTest.value());
+            log.info("Applying chaos: {}", chaosType);
+            switch (chaosType) {
+                case DELAY:
+                    return induceDelay(joinPoint);
+                case EXCEPTION:
+                    return throwException();
+                case MODIFY_RESPONSE:
+                    return modifyResponse(joinPoint);
+                default:
+                    return joinPoint.proceed();
+            }
         }
+        return joinPoint.proceed();
     }
 
     private Object induceDelay(ProceedingJoinPoint joinPoint) throws Throwable {
