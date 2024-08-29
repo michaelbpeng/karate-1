@@ -872,3 +872,161 @@ public class PurchaseOrderItemWriter implements ItemWriter<PurchaseOrder> {
         return 1; // Placeholder
     }
 }
+
+
+
+
+=======================
+Let's set up a simple AOP-based chaos testing framework for your Spring Boot application without using Gremlin, focusing on simulating common chaos scenarios such as inducing delays, throwing exceptions, or modifying responses.
+
+1. Create a Custom Annotation for Chaos Testing
+First, define a custom annotation that will mark methods where chaos testing should be applied.
+
+java
+Copy code
+package com.example.batch.chaos;
+
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+
+@Target(ElementType.METHOD)
+@Retention(RetentionPolicy.RUNTIME)
+public @interface ChaosTest {
+    ChaosType value() default ChaosType.NONE;
+}
+
+enum ChaosType {
+    NONE, DELAY, EXCEPTION, MODIFY_RESPONSE
+}
+2. Implement the AOP Aspect
+Create an AOP aspect that intercepts methods annotated with @ChaosTest and injects chaos based on the specified ChaosType.
+
+java
+Copy code
+package com.example.batch.chaos;
+
+import lombok.extern.slf4j.Slf4j;
+import org.aspectj.lang.ProceedingJoinPoint;
+import org.aspectj.lang.annotation.Around;
+import org.aspectj.lang.annotation.Aspect;
+import org.springframework.stereotype.Component;
+
+import java.util.Random;
+
+@Aspect
+@Component
+@Slf4j
+public class ChaosAspect {
+
+    private final Random random = new Random();
+
+    @Around("@annotation(chaosTest)")
+    public Object applyChaos(ProceedingJoinPoint joinPoint, ChaosTest chaosTest) throws Throwable {
+        switch (chaosTest.value()) {
+            case DELAY:
+                return induceDelay(joinPoint);
+            case EXCEPTION:
+                return throwException();
+            case MODIFY_RESPONSE:
+                return modifyResponse(joinPoint);
+            default:
+                return joinPoint.proceed();
+        }
+    }
+
+    private Object induceDelay(ProceedingJoinPoint joinPoint) throws Throwable {
+        int delay = random.nextInt(2000) + 500; // Delay between 500ms and 2500ms
+        log.info("Inducing a delay of {} ms", delay);
+        Thread.sleep(delay);
+        return joinPoint.proceed();
+    }
+
+    private Object throwException() throws Throwable {
+        log.info("Throwing a chaos-induced exception");
+        throw new RuntimeException("Chaos-induced exception");
+    }
+
+    private Object modifyResponse(ProceedingJoinPoint joinPoint) throws Throwable {
+        Object result = joinPoint.proceed();
+        if (result instanceof String) {
+            log.info("Modifying response due to chaos test");
+            return result + " [CHAOS]";
+        }
+        return result;
+    }
+}
+3. Apply the @ChaosTest Annotation
+Use the @ChaosTest annotation on methods where you want to introduce chaos.
+
+java
+Copy code
+package com.example.batch.job;
+
+import com.example.batch.chaos.ChaosTest;
+import com.example.batch.chaos.ChaosType;
+import lombok.RequiredArgsConstructor;
+import org.springframework.batch.core.Job;
+import org.springframework.batch.core.JobExecutionListener;
+import org.springframework.batch.core.Step;
+import org.springframework.batch.core.configuration.annotation.JobBuilderFactory;
+import org.springframework.batch.core.configuration.annotation.StepBuilderFactory;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+@RequiredArgsConstructor
+public class BatchJobConfig {
+
+    private final JobBuilderFactory jobBuilderFactory;
+    private final StepBuilderFactory stepBuilderFactory;
+
+    @Bean
+    public Job sampleJob() {
+        return jobBuilderFactory.get("sampleJob")
+            .start(sampleStep())
+            .listener(jobExecutionListener())
+            .build();
+    }
+
+    @Bean
+    public Step sampleStep() {
+        return stepBuilderFactory.get("sampleStep")
+            .tasklet((contribution, chunkContext) -> {
+                executeBusinessLogic();
+                return null;
+            })
+            .build();
+    }
+
+    @ChaosTest(ChaosType.DELAY)
+    public void executeBusinessLogic() {
+        // Your business logic here
+        System.out.println("Executing business logic.");
+    }
+
+    @Bean
+    public JobExecutionListener jobExecutionListener() {
+        return new JobExecutionListener() {
+            @Override
+            public void beforeJob(org.springframework.batch.core.JobExecution jobExecution) {
+                // Before job logic
+            }
+
+            @Override
+            public void afterJob(org.springframework.batch.core.JobExecution jobExecution) {
+                // After job logic
+            }
+        };
+    }
+}
+4. Testing and Monitoring
+ChaosType.DELAY: Introduces random delays to simulate latency issues.
+ChaosType.EXCEPTION: Throws a runtime exception to test your application's resilience to unexpected failures.
+ChaosType.MODIFY_RESPONSE: Modifies the return value of a method to test how your application handles unexpected data changes.
+Summary
+Custom Annotation: @ChaosTest is used to mark methods where chaos scenarios should be applied.
+AOP Aspect: The ChaosAspect class handles the injection of chaos, such as inducing delays, throwing exceptions, or modifying responses.
+Application: Annotate methods in your application with @ChaosTest to introduce chaos at specific points.
+This AOP-based chaos testing framework allows you to test your application’s robustness and resilience to various failure scenarios without external dependencies like Gremlin.
