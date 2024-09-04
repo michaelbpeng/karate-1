@@ -1036,3 +1036,97 @@ Custom Annotation: @ChaosTest is used to mark methods where chaos scenarios shou
 AOP Aspect: The ChaosAspect class handles the injection of chaos, such as inducing delays, throwing exceptions, or modifying responses.
 Application: Annotate methods in your application with @ChaosTest to introduce chaos at specific points.
 This AOP-based chaos testing framework allows you to test your application’s robustness and resilience to various failure scenarios without external dependencies like Gremlin.
+-----------------
+        // Prepare batch insert parameters
+            Map<String, Object>[] batchValues = items.stream()
+                .map(order -> Map.of(
+                    "summaryId", summaryId,
+                    "purchaseOrderId", order.getId()
+                ))
+                .toArray(Map[]::new);
+
+            // Bulk insert into mapping table
+            namedParameterJdbcTemplate.batchUpdate(sqlQueriesConfig.getInsertMapping(), batchValues);
+
+
+---------------------
+Performance Comparison
+Efficiency:
+
+Column Index: Accessing a column by its index is generally faster because the JDBC driver directly accesses the data without any lookup.
+Column Name: Accessing a column by its name involves an additional lookup step where the driver maps the column name to its index. This adds some overhead.
+Overhead of Column Name Lookup:
+
+When accessing by name, the JDBC driver has to look up the index of the column corresponding to the given name. This lookup is typically done using a HashMap or similar structure internally, which, while fast, is still an additional operation compared to directly accessing by index.
+If you're dealing with a small number of columns and performing this operation a limited number of times, the difference might be negligible. However, in a large-scale operation (e.g., processing thousands or millions of records), this overhead can add up.
+Code Maintainability:
+
+Column Index: While faster, using indexes can make the code harder to read and maintain. If the schema changes (e.g., a column is added or removed), the index-based access might break or return incorrect data.
+Column Name: Using column names improves code readability and maintainability because it's clearer what each piece of data represents.
+Driver Optimization:
+
+Some JDBC drivers might optimize column name lookups by caching the mappings between column names and indexes. However, this behavior can vary between drivers, so it's not something you should rely on without specific knowledge of your JDBC driver's implementation.
+Practical Impact:
+
+Large Batches: If your batch job processes large volumes of data, and performance is a critical concern, using column indexes might offer a slight performance gain.
+Complex Queries: For queries with many columns or where readability and maintainability are more important, accessing by column name is usually preferred.
+Conclusion
+For Performance-Critical Code: Use column indexes when performance is paramount, and the schema is stable.
+For Maintainable Code: Use column names if you prioritize readability and maintainability, especially in environments where the schema may change over time.
+If the application deals with massive datasets and requires optimal performance, benchmark both approaches in your specific context to determine if the performance gain from using indexes is significant enough to justify the trade-off in maintainability.
+
+
+
+When it comes to JDBC writers, particularly when inserting or updating data in a database, the performance considerations between using parameter placeholders by index (?) and named parameters (when supported by frameworks) are similar to those in JDBC readers, but with a few differences.
+
+Using Parameter Index in JDBC Writer
+java
+Copy code
+String sql = "INSERT INTO orders (order_id, order_date, amount) VALUES (?, ?, ?)";
+PreparedStatement preparedStatement = connection.prepareStatement(sql);
+preparedStatement.setInt(1, orderId);
+preparedStatement.setTimestamp(2, orderDate);
+preparedStatement.setBigDecimal(3, amount);
+preparedStatement.executeUpdate();
+Using Named Parameters (via frameworks like Spring JDBC Template)
+java
+Copy code
+String sql = "INSERT INTO orders (order_id, order_date, amount) VALUES (:orderId, :orderDate, :amount)";
+MapSqlParameterSource params = new MapSqlParameterSource()
+    .addValue("orderId", orderId)
+    .addValue("orderDate", orderDate)
+    .addValue("amount", amount);
+namedParameterJdbcTemplate.update(sql, params);
+Performance Comparison
+Efficiency:
+
+Parameter Index: Using the ? placeholders and setting parameters by index is typically faster because the JDBC driver directly sets the values in the prepared statement without any additional processing.
+Named Parameters: When using named parameters (usually with the help of a framework like Spring JDBC), there's an additional step where the named parameters are mapped to their corresponding index positions. This mapping involves a slight overhead.
+Overhead:
+
+Index Parameters: No lookup is needed; the driver sets the parameter directly at the specified index.
+Named Parameters: The framework needs to convert named parameters to their respective positions, which involves a mapping process. While this overhead is generally minimal, it can add up if you're performing millions of writes.
+Code Maintainability:
+
+Index Parameters: As with readers, using index-based parameters can make the code less readable and more error-prone, especially if the SQL statement changes or if there are many parameters.
+Named Parameters: Named parameters make the code more readable and maintainable. You can clearly see which value corresponds to which column, reducing the likelihood of errors, especially in complex SQL statements.
+Driver and Framework Optimization:
+
+Index Parameters: Direct interaction with the JDBC driver typically leads to the best performance because there's no intermediary framework processing.
+Named Parameters: Some frameworks optimize the translation of named parameters to indexed parameters internally, which can mitigate some performance costs, but there will still be a small overhead compared to using indexed parameters directly.
+Batch Processing:
+
+Index Parameters: In scenarios where you're doing batch inserts or updates, using indexed parameters can slightly reduce overhead, making batch processing more efficient.
+Named Parameters: Named parameters can still be used in batch processing, but the overhead might be more noticeable when processing large batches.
+Conclusion
+For Performance-Critical Code: Stick to indexed parameters (?) for the highest performance, especially in scenarios with large-scale inserts or updates. This approach minimizes overhead and maximizes throughput.
+For Maintainable Code: If readability and maintainability are important (e.g., in complex SQL statements or when working within a team), named parameters can make your code easier to understand and less error-prone, though at a slight performance cost.
+Practical Advice
+Benchmarking: If your application involves a large volume of database writes, consider benchmarking both approaches in your specific context to determine if the performance difference is significant enough to justify the choice of one over the other.
+Use Case Consideration: For simple, high-performance operations (like logging or telemetry), using indexed parameters might be best. For more complex operations, especially those with many parameters, named parameters can significantly improve maintainability.
+
+
+
+
+
+
