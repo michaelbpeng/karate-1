@@ -1,0 +1,138 @@
+If a failed step in Spring Batch does not roll back the database transaction, the issue could stem from various causes related to transaction management, batch configuration, or even specific database behavior. Here are some common reasons why a rollback might not occur as expected:
+
+1. Transaction Scope Not Set Properly
+Spring Batch uses transaction boundaries to manage rollback behavior. If the step or tasklet is not properly marked as transactional, the rollback won’t happen. To ensure rollback occurs, you need to make sure that:
+
+The step is marked as transactional.
+A transaction manager is configured and attached to the step.
+Example configuration:
+
+java
+Copy code
+@Bean
+public Step transactionalStep() {
+    return stepBuilderFactory.get("transactionalStep")
+            .<InputType, OutputType>chunk(100)
+            .reader(itemReader())
+            .processor(itemProcessor())
+            .writer(itemWriter())
+            .transactionManager(transactionManager())  // Ensure transaction manager is set
+            .build();
+}
+If the transaction manager is not explicitly set, Spring will try to auto-wire one. Make sure it's configured correctly.
+
+2. Non-Transactional Writer
+The ItemWriter must support transactional behavior. If you're using a custom ItemWriter that doesn't properly implement transaction support (like committing directly without using the provided transaction manager), rollback won't happen.
+
+If using Spring-provided writers like JdbcBatchItemWriter or JpaItemWriter, transaction management should automatically be handled as long as a PlatformTransactionManager is configured.
+
+3. No Exception Propagation
+For a transaction to be rolled back, an exception must propagate up the stack and be caught by Spring Batch. If the exception is caught and handled inside the writer, reader, or processor without rethrowing it, Spring Batch won't be aware of the failure and won't trigger a rollback.
+
+Make sure you are letting the exceptions propagate. Example:
+
+java
+Copy code
+@Override
+public void write(List<? extends OutputType> items) throws Exception {
+    try {
+        // Write logic
+    } catch (Exception e) {
+        // Let the exception propagate to trigger a rollback
+        throw e;
+    }
+}
+4. Incorrect Rollback Policies
+By default, Spring Batch rolls back on any RuntimeException. However, you might have a custom rollback policy defined that could be interfering with this behavior. Ensure that no custom SkipPolicy or RetryPolicy is preventing rollback for the given exception types.
+
+Example of a rollback policy:
+
+java
+Copy code
+@Bean
+public Step stepWithCustomPolicy() {
+    return stepBuilderFactory.get("stepWithCustomPolicy")
+            .<InputType, OutputType>chunk(100)
+            .reader(itemReader())
+            .writer(itemWriter())
+            .faultTolerant()
+            .retryLimit(3)
+            .retry(MyRetryableException.class)
+            .noRollback(MyNonCriticalException.class)  // Control rollback for certain exceptions
+            .build();
+}
+5. Tasklet-Based Step with No Transaction Boundaries
+If you're using a tasklet-based step, the transaction might not be automatically rolled back. Ensure that the tasklet explicitly manages transactions, or that it is configured to be transactional.
+
+Example:
+
+java
+Copy code
+@Bean
+public Step taskletStep() {
+    return stepBuilderFactory.get("taskletStep")
+            .tasklet(myTasklet)
+            .transactionManager(transactionManager())  // Set transaction manager
+            .build();
+}
+Also, ensure that the tasklet is throwing exceptions when failures occur to trigger the rollback.
+
+6. Transaction Manager Mismatch
+Ensure that the correct transaction manager is configured. For example, if you’re using JPA, make sure the JpaTransactionManager is set. If you’re using JDBC, you should use DataSourceTransactionManager.
+
+Example configuration:
+
+java
+Copy code
+@Bean
+public PlatformTransactionManager transactionManager(EntityManagerFactory entityManagerFactory) {
+    return new JpaTransactionManager(entityManagerFactory);
+}
+If the wrong transaction manager is used, transactions won’t behave as expected, and rollback might not happen.
+
+7. Database-Specific Behavior
+Some databases behave differently in terms of transaction isolation or autocommit modes. If your database is using an autocommit mode, changes might be committed before Spring Batch has the chance to roll them back. Ensure that:
+
+Autocommit is disabled in the database connection.
+The transaction isolation level is appropriate for your use case (e.g., READ_COMMITTED).
+Example configuration to disable autocommit:
+
+java
+Copy code
+@Bean
+public DataSource dataSource() {
+    HikariDataSource dataSource = new HikariDataSource();
+    dataSource.setJdbcUrl("jdbc:mysql://localhost:3306/mydb");
+    dataSource.setUsername("user");
+    dataSource.setPassword("password");
+    dataSource.setAutoCommit(false);  // Ensure autocommit is disabled
+    return dataSource;
+}
+8. Skip Policy
+If you're using a SkipPolicy in your job, it might be configured to skip exceptions and continue processing, which can result in changes not being rolled back.
+
+Example:
+
+java
+Copy code
+@Bean
+public Step stepWithSkipPolicy() {
+    return stepBuilderFactory.get("stepWithSkipPolicy")
+            .<InputType, OutputType>chunk(100)
+            .reader(itemReader())
+            .writer(itemWriter())
+            .faultTolerant()
+            .skip(MySkippableException.class)
+            .skipLimit(10)
+            .build();
+}
+In this case, skipped exceptions won’t trigger a rollback.
+
+Conclusion
+To ensure that a failed step in Spring Batch rolls back the database transaction, you need to ensure the following:
+
+Proper transaction manager is configured for the step.
+Exceptions propagate out of the ItemReader, ItemProcessor, and ItemWriter.
+Transactional writers are used that respect the transaction boundaries.
+Avoiding misconfigurations such as autocommit being enabled or inappropriate skip policies.
+If all these points are correctly handled, Spring Batch should automatically roll back the transaction when a step fails.
