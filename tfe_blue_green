@@ -291,3 +291,7 @@ This JSON file defines the Spinnaker pipeline for the Blue/Green deployment.
 ---
 
 This setup automates Blue/Green deployments for ECS using Terraform to provision resources and Spinnaker to manage the traffic shifts and deployment process. Let me know if you need further explanations or customizations!
+
+
+reference
+https://medium.com/@ywg/blue-green-deployment-on-aws-ecs-with-terraform-7dfd67502b5b
